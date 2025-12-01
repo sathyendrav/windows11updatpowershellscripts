@@ -1,0 +1,90 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20251201133208
+Username: SATYALEGION\sathy
+RunAs User: SATYALEGION\sathy
+Configuration Name: 
+Machine: SATYALEGION (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\system32\WindowsPowerShell\v1.0\PowerShell_ISE.exe
+Process ID: 19204
+PSVersion: 5.1.26100.7019
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7019
+BuildVersion: 10.0.26100.7019
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+[2025-12-01 13:32:08] [Info] === Update Session Started ===
+[2025-12-01 13:32:08] [Info] Script: install-updates
+[2025-12-01 13:32:08] [Info] Timestamp: 2025-12-01 13:32:08
+[2025-12-01 13:32:08] [Info] =
+[2025-12-01 13:32:08] [Info] Windows Update Helper - Enhanced Automated Installer
+[2025-12-01 13:32:08] [Info] =
+[2025-12-01 13:32:09] [Info] 
+Running pre-flight checks...
+[2025-12-01 13:32:09] [Info] Running pre-flight checks...
+[2025-12-01 13:32:09] [Success] Running with Administrator privileges.
+[2025-12-01 13:32:09] [Success] Internet connectivity: OK
+[2025-12-01 13:32:09] [Success] Disk space: 760.31GB free
+[2025-12-01 13:32:09] [Info] Pre-flight checks completed.
+[2025-12-01 13:32:09] [Info] 
+Creating system restore point...
+[2025-12-01 13:32:09] [Info] Creating system restore point...
+WARNING: A new system restore point cannot be created because one has already been created within the past 1440 minutes. The frequency of restore point creation can be changed by creating the DWORD value 'SystemRestorePointCreationFrequency' under the registry key 'HKLM\Software\Microsoft\Windows NT\CurrentVersion\SystemRestore'. The value of this registry key indicates the necessary time interval (in minutes) between two restore point creation. The default value is 1440 minutes (24 hours).
+[2025-12-01 13:32:09] [Success] System restore point created successfully.
+[2025-12-01 13:32:09] [Info]
+[2025-12-01 13:32:09] [Info] MICROSOFT STORE UPDATES
+[2025-12-01 13:32:09] [Info] ======================================================================
+[2025-12-01 13:32:22] [Success] Microsoft Store update scan initiated successfully.
+[2025-12-01 13:32:22] [Info]
+[2025-12-01 13:32:22] [Info] WINGET PACKAGE UPDATES
+[2025-12-01 13:32:22] [Info] ======================================================================
+[2025-12-01 13:32:22] [Info] Checking for available Winget updates...
+[2025-12-01 13:32:24] [Info]     -                                                                                                                               -     \                                                                                                                           Name Id                Version Available Source ----------------------------------------------- Zed  ZedIndustries.Zed 0.214.6 0.214.7   winget 1 upgrades available. 1 package(s) have version numbers that cannot be determined. Use --include-unknown to see all results.
+[2025-12-01 13:32:24] [Info] 
+Starting Winget package upgrades...
+
+   -
+
+
+   -
+   \
+
+Name Id                Version Available Source
+-----------------------------------------------
+Zed  ZedIndustries.Zed 0.214.6 0.214.7   winget
+1 upgrades available.
+1 package(s) have version numbers that cannot be determined. Use --include-unknown to see all results.
+1 package(s) have version numbers that cannot be determined. Use --include-unknown to see all results.
+[2025-12-01 13:32:26] [Success] Winget packages updated successfully.
+[2025-12-01 13:32:26] [Info]
+[2025-12-01 13:32:26] [Info] CHOCOLATEY PACKAGE UPDATES
+[2025-12-01 13:32:26] [Info] ======================================================================
+Chocolatey v2.5.1
+Upgrading the following packages:
+all
+By upgrading, you accept licenses for the packages.
+chocolatey v2.5.1 is the latest version available based on your source(s).
+dart-sdk v3.10.2 is the latest version available based on your source(s).
+
+Chocolatey upgraded 0/2 packages.
+ See the log for details (C:\ProgramData\chocolatey\logs\chocolatey.log).
+[2025-12-01 13:32:28] [Success] Chocolatey packages updated successfully.
+[2025-12-01 13:32:28] [Info] 
+Generating update report...
+[2025-12-01 13:32:28] [Success] Report saved to: .\reports\update-report-2025-12-01_133228.html
+[2025-12-01 13:32:28] [Success] Report saved to: .\reports\update-report-2025-12-01_133228.html
+[2025-12-01 13:32:28] [Info]
+[2025-12-01 13:32:28] [Success] UPDATE SESSION COMPLETED
+[2025-12-01 13:32:28] [Info] ======================================================================
+[2025-12-01 13:32:28] [Info] Duration: 0.32 minutes
+[2025-12-01 13:32:28] [Info] Store: Success | Winget: Success | Chocolatey: Success
+[2025-12-01 13:32:28] [Info] Log file: Transcript started, output file is .\logs\install-updates-2025-12-01_133208.log .\logs\install-updates-2025-12-01_133208.log
+[2025-12-01 13:32:28] [Info] === Update Session Completed ===
+[2025-12-01 13:32:28] [Info] Log file: Transcript started, output file is .\logs\install-updates-2025-12-01_133208.log .\logs\install-updates-2025-12-01_133208.log
+**********************
+Windows PowerShell transcript end
+End time: 20251201133228
+**********************

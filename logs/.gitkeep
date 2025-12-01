@@ -1,0 +1,25 @@
+# Logs Directory
+
+This directory stores execution logs and transcripts from update sessions.
+
+Log files are automatically created with timestamps when scripts run.
+
+## Log File Naming
+
+- Format: `<script-name>-<timestamp>.log`
+- Example: `install-updates-2025-12-01_143052.log`
+
+## Retention
+
+Configure log retention in `config.json`:
+- `MaxLogFiles`: Number of log files to keep
+- `MaxLogFileSizeKB`: Maximum size per log file
+
+## Cleanup
+
+To manually clean old logs:
+```powershell
+Get-ChildItem -Path ".\logs" -Filter "*.log" | 
+  Where-Object {$_.LastWriteTime -lt (Get-Date).AddDays(-30)} | 
+  Remove-Item
+```

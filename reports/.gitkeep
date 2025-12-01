@@ -1,0 +1,34 @@
+# Reports Directory
+
+This directory stores generated update reports.
+
+Reports are automatically created when enabled in configuration or via command-line parameter.
+
+## Report Formats
+
+- **HTML**: Web-viewable formatted reports with styling
+- **CSV**: Comma-separated values for Excel/data analysis
+- **JSON**: Machine-readable structured data
+
+## Report File Naming
+
+- Format: `update-report-<timestamp>.<format>`
+- Example: `update-report-2025-12-01_143052.html`
+
+## Configuration
+
+Enable/disable reports in `config.json`:
+```json
+"ReportSettings": {
+  "GenerateReport": true,
+  "ReportFormat": "HTML",
+  "ReportDirectory": ".\\reports"
+}
+```
+
+## Command-Line
+
+Generate report for a single run:
+```powershell
+.\install-updates-enhanced.ps1 -GenerateReport
+```

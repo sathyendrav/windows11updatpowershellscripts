@@ -1,0 +1,55 @@
+{
+  "UpdateSettings": {
+    "EnableMicrosoftStore": true,
+    "EnableWinget": true,
+    "EnableChocolatey": true,
+    "AutoRestartAfterUpdates": false,
+    "CreateRestorePoint": true,
+    "CheckDiskSpace": true,
+    "MinimumFreeSpaceGB": 10
+  },
+  "Logging": {
+    "EnableLogging": true,
+    "LogDirectory": ".\\logs",
+    "LogFileName": "update-log-{date}.txt",
+    "MaxLogFileSizeKB": 5120,
+    "MaxLogFiles": 10,
+    "LogLevel": "Info"
+  },
+  "Notifications": {
+    "EnableConsoleOutput": true,
+    "EnableWindowsNotifications": false,
+    "EnableEmailNotifications": false,
+    "EmailSettings": {
+      "SmtpServer": "",
+      "SmtpPort": 587,
+      "FromAddress": "",
+      "ToAddress": "",
+      "UseSSL": true
+    }
+  },
+  "PackageExclusions": {
+    "Winget": [],
+    "Chocolatey": []
+  },
+  "ScheduleSettings": {
+    "QuietHoursStart": "22:00",
+    "QuietHoursEnd": "07:00",
+    "RespectQuietHours": false,
+    "MaxRetryAttempts": 3,
+    "RetryDelaySeconds": 300
+  },
+  "ReportSettings": {
+    "GenerateReport": true,
+    "ReportFormat": "HTML",
+    "ReportDirectory": ".\\reports",
+    "IncludeSystemInfo": true,
+    "IncludeInstalledSoftware": true
+  },
+  "Advanced": {
+    "TimeoutSeconds": 3600,
+    "ParallelExecution": false,
+    "VerboseOutput": false,
+    "DryRun": false
+  }
+}

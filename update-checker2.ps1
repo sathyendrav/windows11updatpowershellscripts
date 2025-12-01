@@ -82,7 +82,7 @@ function Write-ColorOutput {
 function Check-WingetUpdates {
     # Verify winget is installed and accessible
     if (Get-Command winget -ErrorAction SilentlyContinue) {
-        Write-ColorOutput "`n=== Winget Packages ===" "Cyan"
+        Write-ColorOutput -Message "`n=== Winget Packages ===" -Color "Cyan"
         
         try {
             # Query winget for available updates
@@ -91,9 +91,9 @@ function Check-WingetUpdates {
             
             # Parse the output to determine if updates are available
             if ($updates -like "*No installed package*" -or $updates -like "*No applicable updates*") {
-                Write-ColorOutput "All Winget packages are up to date" "Green"
+                Write-ColorOutput -Message "All Winget packages are up to date" -Color "Green"
             } else {
-                Write-ColorOutput "Available updates found:" "Yellow"
+                Write-ColorOutput -Message "Available updates found:" -Color "Yellow"
                 # Display the list of available updates
                 winget upgrade --include-unknown
                 
@@ -103,17 +103,17 @@ function Check-WingetUpdates {
                     if ($choice -eq 'Y' -or $choice -eq 'y') {
                         # Upgrade all packages silently
                         winget upgrade --all --silent
-                        Write-ColorOutput "Winget packages updated successfully" "Green"
+                        Write-ColorOutput -Message "Winget packages updated successfully" -Color "Green"
                     }
                 }
             }
         } catch {
             # Handle any errors during winget operations
-            Write-ColorOutput "Error checking Winget updates: $($_.Exception.Message)" "Red"
+            Write-ColorOutput -Message "Error checking Winget updates: $($_.Exception.Message)" -Color "Red"
         }
     } else {
         # Winget not found on the system
-        Write-ColorOutput "Winget is not available" "Red"
+        Write-ColorOutput -Message "Winget is not available" -Color "Red"
     }
 }
 
@@ -130,22 +130,43 @@ function Check-WingetUpdates {
     through the Microsoft Store app.
 #>
 function Check-StoreUpdates {
-    Write-ColorOutput "`n=== Microsoft Store Apps ===" "Cyan"
+    Write-ColorOutput -Message "`n=== Microsoft Store Apps ===" -Color "Cyan"
+    
+    # Check if running as administrator
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    
+    if (-not $isAdmin) {
+        Write-ColorOutput -Message "Skipping Store updates check - requires Administrator privileges" -Color "Yellow"
+        Write-ColorOutput -Message "Run PowerShell as Administrator to check Microsoft Store updates" -Color "Yellow"
+        return
+    }
     
     try {
         # Access MDM (Mobile Device Management) namespace to scan for Store updates
         # This triggers the update check but doesn't automatically install
         $result = Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" `
-                                  -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" | `
+                                  -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" `
+                                  -ErrorAction Stop | `
                   Invoke-CimMethod -MethodName UpdateScanMethod
         
-        Write-ColorOutput "Microsoft Store update scan initiated" "Green"
+        Write-ColorOutput -Message "Microsoft Store update scan initiated" -Color "Green"
         
         # Note: Store apps require the Microsoft Store app for viewing/installing updates
-        Write-ColorOutput "Check the Microsoft Store app for available updates" "Yellow"
+        Write-ColorOutput -Message "Check the Microsoft Store app for available updates" -Color "Yellow"
+    } catch [Microsoft.Management.Infrastructure.CimException] {
+        # Handle CIM-specific errors (permission denied, namespace not found, etc.)
+        if ($_.Exception.Message -like "*Access denied*" -or $_.Exception.HResult -eq 0x80041003) {
+            Write-ColorOutput -Message "Access denied to Microsoft Store update service" -Color "Red"
+            Write-ColorOutput -Message "Please run PowerShell as Administrator to check Store updates" -Color "Yellow"
+        } elseif ($_.Exception.Message -like "*Invalid namespace*") {
+            Write-ColorOutput -Message "Microsoft Store MDM namespace not available on this system" -Color "Yellow"
+            Write-ColorOutput -Message "This feature may not be supported on your Windows edition" -Color "Yellow"
+        } else {
+            Write-ColorOutput -Message "Error checking Store updates: $($_.Exception.Message)" -Color "Red"
+        }
     } catch {
-        # Handle errors (typically permission issues or namespace unavailability)
-        Write-ColorOutput "Error checking Store updates: $($_.Exception.Message)" "Red"
+        # Handle other unexpected errors
+        Write-ColorOutput -Message "Unexpected error checking Store updates: $($_.Exception.Message)" -Color "Red"
     }
 }
 
@@ -162,7 +183,7 @@ function Check-StoreUpdates {
 function Check-ChocolateyUpdates {
     # Verify Chocolatey is installed and accessible
     if (Get-Command choco -ErrorAction SilentlyContinue) {
-        Write-ColorOutput "`n=== Chocolatey Packages ===" "Cyan"
+        Write-ColorOutput -Message "`n=== Chocolatey Packages ===" -Color "Cyan"
         
         try {
             # List all outdated Chocolatey packages
@@ -170,7 +191,7 @@ function Check-ChocolateyUpdates {
             choco outdated
         } catch {
             # Handle any errors during Chocolatey operations
-            Write-ColorOutput "Error checking Chocolatey updates: $($_.Exception.Message)" "Red"
+            Write-ColorOutput -Message "Error checking Chocolatey updates: $($_.Exception.Message)" -Color "Red"
         }
     }
 }
@@ -187,7 +208,7 @@ function Check-ChocolateyUpdates {
     installed applications. Shows total count and recently installed apps.
 #>
 function Get-InstalledSoftware {
-    Write-ColorOutput "`n=== Installed Software Overview ===" "Cyan"
+    Write-ColorOutput -Message "`n=== Installed Software Overview ===" -Color "Cyan"
     
     # Registry paths where installed software information is stored
     # Both native (64-bit) and WOW6432Node (32-bit on 64-bit systems) paths
@@ -203,11 +224,11 @@ function Get-InstalledSoftware {
                  Select-Object DisplayName, DisplayVersion, Publisher, InstallDate
     
     # Display total count of installed applications
-    Write-ColorOutput "Total installed applications: $($installed.Count)" "White"
+    Write-ColorOutput -Message "Total installed applications: $($installed.Count)" -Color "White"
     
     # Show the 5 most recently installed applications
     $recent = $installed | Sort-Object InstallDate -Descending | Select-Object -First 5
-    Write-ColorOutput "`nRecently installed applications:" "Yellow"
+    Write-ColorOutput -Message "`nRecently installed applications:" -Color "Yellow"
     # Format output as a table for readability
     $recent | Format-Table DisplayName, DisplayVersion, InstallDate -AutoSize
 }
@@ -216,14 +237,14 @@ function Get-InstalledSoftware {
 # Main Execution
 # ============================================================================
 
-Write-ColorOutput "Windows 11 Application Update Checker" "Magenta"
-Write-ColorOutput "=====================================" "Magenta"
+Write-ColorOutput -Message "Windows 11 Application Update Checker" -Color "Magenta"
+Write-ColorOutput -Message "=====================================" -Color "Magenta"
 
 # Display system information
 $os = Get-CimInstance Win32_OperatingSystem
-Write-ColorOutput "System: $($os.Caption)" "White"
-Write-ColorOutput "Version: $($os.Version)" "White"
-Write-ColorOutput "Last Boot: $($os.LastBootUpTime)" "White"
+Write-ColorOutput -Message "System: $($os.Caption)" -Color "White"
+Write-ColorOutput -Message "Version: $($os.Version)" -Color "White"
+Write-ColorOutput -Message "Last Boot: $($os.LastBootUpTime)" -Color "White"
 
 # Execute all update checks in sequence
 Check-WingetUpdates
@@ -232,14 +253,14 @@ Check-ChocolateyUpdates
 Get-InstalledSoftware
 
 # Display completion message
-Write-ColorOutput "`n" + ("=" * 60) "Magenta"
-Write-ColorOutput "Update check completed!" "Green"
+Write-ColorOutput -Message ("`n" + ("=" * 60)) -Color "Magenta"
+Write-ColorOutput -Message "Update check completed!" -Color "Green"
 
 # Indicate mode of operation
 if ($AutoUpdate) {
-    Write-ColorOutput "Auto-update mode was enabled" "Yellow"
+    Write-ColorOutput -Message "Auto-update mode was enabled" -Color "Yellow"
 }
 if ($ListOnly) {
-    Write-ColorOutput "List-only mode - no updates were installed" "Cyan"
+    Write-ColorOutput -Message "List-only mode - no updates were installed" -Color "Cyan"
 }
-Write-ColorOutput ("=" * 60) "Magenta"
+Write-ColorOutput -Message ("=" * 60) -Color "Magenta"

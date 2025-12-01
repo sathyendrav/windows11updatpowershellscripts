@@ -28,10 +28,22 @@ Choose from simple one-click updates or advanced reporting tools with detailed d
 
 ## 📂 Scripts
 
-### 🚀 `install-updates.ps1`
+### 🚀 `install-updates.ps1` (Basic)
 **Automated Update Installer**
 
-Runs Microsoft Store, Winget, and Chocolatey updates in fully automatic, non-interactive mode.
+Simple, hands-off script that runs Microsoft Store, Winget, and Chocolatey updates in fully automatic, non-interactive mode.
+
+### 🌟 `install-updates-enhanced.ps1` (⭐ Recommended)
+**Enhanced Automated Installer with Advanced Features**
+
+Full-featured update installer with:
+- 📝 **Comprehensive logging** with audit trails
+- ⚙️ **Configuration file** support (`config.json`)
+- 🛡️ **Pre-flight checks** (internet, disk space, admin rights)
+- 📊 **HTML/CSV/JSON reports** generation
+- 💾 **System restore points** before updates
+- 🚫 **Package exclusions** support
+- ⏱️ **Quiet hours** and scheduling options
 
 ### 🔍 `update-checker1.ps1`
 **Quick Update Scanner**
@@ -48,16 +60,38 @@ Enhanced checker with comprehensive features:
 - 📋 Installed software inventory
 - 💻 System information display
 
+### 🛠️ `UpdateUtilities.psm1`
+**Shared Module Library**
+
+PowerShell module providing common functions:
+- Configuration management
+- Logging and transcript handling
+- Pre-flight system checks
+- Report generation
+- Restore point creation
+
 ---
 
 ## ✨ Features
 
+### Core Features
 - **🎯 Multi-Platform Support** - Manage updates from Store, Winget, and Chocolatey in one place
 - **🎨 Colorized Output** - Easy-to-read console output with color coding
 - **📊 Detailed Reporting** - View installed software, versions, and system info
 - **⚙️ Flexible Modes** - List-only, auto-update, or manual confirmation
 - **🔒 Safe Previews** - Test updates before committing changes
 - **📅 Schedulable** - Easy integration with Task Scheduler
+
+### Enhanced Features (New! 🎉)
+- **📝 Comprehensive Logging** - Automatic transcript logs with timestamps and error tracking
+- **⚙️ Configuration File** - Customize behavior via `config.json` (exclusions, settings, preferences)
+- **🛡️ Pre-flight Checks** - Validates internet, disk space, admin rights, and update sources
+- **📊 Report Generation** - Export results to HTML, CSV, or JSON formats
+- **💾 System Restore Points** - Automatic safety checkpoints before major updates
+- **🚫 Package Exclusions** - Exclude specific packages from updates
+- **⏱️ Quiet Hours** - Respect configured quiet hours for automated runs
+- **🔄 Retry Logic** - Automatic retry for failed updates
+- **📧 Notifications** - Email and Windows notification support (configurable)
 
 ---
 
@@ -142,12 +176,127 @@ These scripts are provided "AS IS" without warranty of any kind, express or impl
 
 ---
 
+## ⚙️ Configuration
+
+The enhanced scripts use `config.json` for customization. Edit this file to control script behavior.
+
+### Configuration File Structure
+
+```json
+{
+  "UpdateSettings": {
+    "EnableMicrosoftStore": true,      // Enable/disable Store updates
+    "EnableWinget": true,              // Enable/disable Winget updates
+    "EnableChocolatey": true,          // Enable/disable Chocolatey updates
+    "CreateRestorePoint": true,        // Create restore point before updates
+    "CheckDiskSpace": true,            // Verify sufficient disk space
+    "MinimumFreeSpaceGB": 10          // Minimum free space required
+  },
+  "Logging": {
+    "EnableLogging": true,             // Enable/disable logging
+    "LogDirectory": ".\\logs",         // Where to store logs
+    "MaxLogFiles": 10,                 // Max number of log files to keep
+    "LogLevel": "Info"                 // Logging level
+  },
+  "PackageExclusions": {
+    "Winget": [],                      // Packages to exclude from Winget updates
+    "Chocolatey": []                   // Packages to exclude from Choco updates
+  },
+  "ReportSettings": {
+    "GenerateReport": true,            // Auto-generate reports
+    "ReportFormat": "HTML",            // Format: HTML, CSV, or JSON
+    "ReportDirectory": ".\\reports"    // Where to store reports
+  },
+  "ScheduleSettings": {
+    "QuietHoursStart": "22:00",        // Quiet hours start time
+    "QuietHoursEnd": "07:00",          // Quiet hours end time
+    "RespectQuietHours": false,        // Honor quiet hours
+    "MaxRetryAttempts": 3              // Retry failed updates
+  }
+}
+```
+
+### Common Configuration Scenarios
+
+**Exclude specific packages:**
+```json
+"PackageExclusions": {
+  "Winget": ["Microsoft.Edge", "VideoLAN.VLC"],
+  "Chocolatey": ["googlechrome", "firefox"]
+}
+```
+
+**Disable specific update sources:**
+```json
+"UpdateSettings": {
+  "EnableMicrosoftStore": true,
+  "EnableWinget": true,
+  "EnableChocolatey": false
+}
+```
+
+**Change report format:**
+```json
+"ReportSettings": {
+  "GenerateReport": true,
+  "ReportFormat": "CSV",
+  "ReportDirectory": "C:\\Reports\\Updates"
+}
+```
+
+---
+
 ## 📖 Usage
 
-### Option 1: `install-updates.ps1` - Hands-Off Automation
+### Option 1: `install-updates.ps1` - Basic (Legacy)
+
+Simple hands-off automation without advanced features.
+
+**Run it:**
+```powershell
+.\install-updates.ps1
+```
+
+---
+
+### Option 2: `install-updates-enhanced.ps1` - ⭐ Recommended
+
+Full-featured installer with logging, reporting, and safety features.
+
+**Basic usage:**
+```powershell
+.\install-updates-enhanced.ps1
+```
+
+**With custom configuration:**
+```powershell
+.\install-updates-enhanced.ps1 -ConfigPath "C:\MyConfig\config.json"
+```
+
+**Skip restore point:**
+```powershell
+.\install-updates-enhanced.ps1 -SkipRestorePoint
+```
+
+**Force generate report:**
+```powershell
+.\install-updates-enhanced.ps1 -GenerateReport
+```
+
+**Features:**
+1. ✅ Runs pre-flight checks (internet, disk space, admin rights)
+2. 💾 Creates system restore point (optional)
+3. 📝 Logs all operations to `.\logs\` directory
+4. 🔄 Updates Microsoft Store, Winget, and Chocolatey
+5. 📊 Generates HTML/CSV/JSON report (optional)
+6. ✨ Respects package exclusions from config.json
 
 **What it does:**
-1. Triggers Microsoft Store update scan
+1. Loads configuration from `config.json`
+2. Initializes logging and transcript
+3. Runs pre-flight system checks
+4. Creates system restore point (if enabled)
+5. Triggers Microsoft Store update scan
 2. Upgrades all Winget packages silently
 3. Upgrades all Chocolatey packages silently
 
@@ -282,6 +431,69 @@ Automate updates with Windows Task Scheduler for hands-free maintenance.
      ```
 
 6. **Save** the task
+
+---
+
+## 📁 Project Structure
+
+```
+windows11updatpowershellscripts/
+├── config.json                      # Configuration file
+├── install-updates.ps1              # Basic update installer
+├── install-updates-enhanced.ps1     # ⭐ Enhanced installer with logging
+├── update-checker1.ps1              # Quick update scanner
+├── update-checker2.ps1              # Advanced update reporter
+├── UpdateUtilities.psm1             # Shared module library
+├── logs/                            # Execution logs (auto-created)
+├── reports/                         # Generated reports (auto-created)
+├── README.md                        # This file
+├── TROUBLESHOOTING.md               # 🔧 Troubleshooting guide
+└── LICENSE                          # MIT License
+```
+
+---
+
+## 🔧 Troubleshooting
+
+Having issues? Check our comprehensive troubleshooting guide:
+
+### [📖 TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+
+Common issues covered:
+- ❌ Execution policy errors
+- ❌ Permission and access denied problems
+- ❌ Microsoft Store update failures
+- ❌ Winget not available or hanging
+- ❌ Chocolatey installation issues
+- ❌ Configuration and logging problems
+- ❌ And much more...
+
+### Quick Help
+
+**Check log files:**
+```powershell
+Get-ChildItem .\logs | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | Get-Content
+```
+
+**Verify configuration:**
+```powershell
+Get-Content .\config.json | ConvertFrom-Json
+```
+
+**Test prerequisites:**
+```powershell
+# Check if running as admin
+([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+# Test internet
+Test-Connection google.com -Count 1
+
+# Check winget
+winget --version
+
+# Check Chocolatey
+choco --version
+```
 
 ---
 
