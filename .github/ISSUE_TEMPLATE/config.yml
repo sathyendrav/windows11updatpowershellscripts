@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/sathyendrav/windows11-update-powershell-scripts/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/sathyendrav/windows11-update-powershell-scripts/blob/main/README.md
+    about: Read the comprehensive documentation
+  - name: ❓ FAQ
+    url: https://github.com/sathyendrav/windows11-update-powershell-scripts/blob/main/FAQ.md
+    about: Find answers to frequently asked questions
+  - name: 🔧 Troubleshooting Guide
+    url: https://github.com/sathyendrav/windows11-update-powershell-scripts/blob/main/TROUBLESHOOTING.md
+    about: Get help resolving common issues
+  - name: 🔐 Security Policy
+    url: https://github.com/sathyendrav/windows11-update-powershell-scripts/blob/main/SECURITY.md
+    about: Report security vulnerabilities privately
