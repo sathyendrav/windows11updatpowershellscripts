@@ -14,7 +14,7 @@
 
 .NOTES
     File Name      : test-notifications.ps1
-    Author         : sathyendrav
+    Author         : Sathyendra Vemulapalli
     Prerequisite   : Windows 10/11, PowerShell 5.1+
     
 .EXAMPLE

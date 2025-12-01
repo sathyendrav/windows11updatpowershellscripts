@@ -29,7 +29,7 @@
 
 .NOTES
     File Name      : rollback-updates.ps1
-    Author         : sathyendrav
+    Author         : Sathyendra Vemulapalli
     Prerequisite   : PowerShell 5.1 or later, Administrator privileges
     
 .EXAMPLE

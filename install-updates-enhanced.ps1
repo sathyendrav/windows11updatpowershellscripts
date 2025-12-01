@@ -27,7 +27,7 @@
 
 .NOTES
     File Name      : install-updates-enhanced.ps1
-    Author         : sathyendrav
+    Author         : Sathyendra Vemulapalli
     Prerequisite   : PowerShell 5.1 or later, Administrator privileges recommended
     Required Tools : Winget (App Installer), Chocolatey (optional)
     

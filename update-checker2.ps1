@@ -33,7 +33,7 @@
 
 .NOTES
     File Name      : update-checker2.ps1
-    Author         : sathyendrav
+    Author         : Sathyendra Vemulapalli
     Prerequisite   : PowerShell 5.1 or later, Administrator privileges recommended
     Required Tools : Winget (App Installer), Chocolatey (optional)
     
