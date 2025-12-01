@@ -2151,6 +2151,627 @@ function New-ValidationReport {
     }
 }
 
+# ============================================================================
+# Security Validation Functions
+# ============================================================================
+
+function Get-FileHash256 {
+    <#
+    .SYNOPSIS
+        Calculates SHA256 hash of a file.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("SHA256", "SHA512", "MD5", "SHA1")]
+        [string]$Algorithm = "SHA256"
+    )
+    
+    try {
+        if (-not (Test-Path $FilePath)) {
+            Write-Log "File not found: $FilePath" -Level "Warning"
+            return $null
+        }
+        
+        $hash = Get-FileHash -Path $FilePath -Algorithm $Algorithm -ErrorAction Stop
+        return $hash.Hash
+    } catch {
+        Write-Log "Error calculating hash for ${FilePath}: $_" -Level "Error"
+        return $null
+    }
+}
+
+function Get-PackageExecutablePath {
+    <#
+    .SYNOPSIS
+        Finds the main executable path for a package.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source
+    )
+    
+    try {
+        switch ($Source) {
+            "Winget" {
+                $wingetInfo = winget show --id $PackageName --exact 2>&1 | Out-String
+                if ($wingetInfo -match 'Install Location:\s*(.+)') {
+                    $installPath = $matches[1].Trim()
+                    if (Test-Path $installPath) {
+                        $exeFiles = Get-ChildItem -Path $installPath -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                        if ($exeFiles) {
+                            return $exeFiles.FullName
+                        }
+                    }
+                }
+                
+                $programFiles = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, "$env:LOCALAPPDATA\Programs")
+                foreach ($baseDir in $programFiles) {
+                    $searchName = $PackageName -replace '\..*$', ''
+                    $possiblePath = Get-ChildItem -Path $baseDir -Filter "$searchName*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($possiblePath) {
+                        return $possiblePath.FullName
+                    }
+                }
+            }
+            
+            "Chocolatey" {
+                $chocoPath = "$env:ChocolateyInstall\lib\$PackageName"
+                if (Test-Path $chocoPath) {
+                    $exeFiles = Get-ChildItem -Path $chocoPath -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | 
+                        Where-Object { $_.Name -notmatch 'uninstall|setup|installer' } | 
+                        Select-Object -First 1
+                    if ($exeFiles) {
+                        return $exeFiles.FullName
+                    }
+                }
+            }
+            
+            "Store" {
+                Write-Log "Store app path detection not fully supported" -Level "Warning"
+                return $null
+            }
+        }
+        
+        return $null
+    } catch {
+        Write-Log "Error finding executable for ${PackageName}: $_" -Level "Error"
+        return $null
+    }
+}
+
+function Test-AuthenticodeSignature {
+    <#
+    .SYNOPSIS
+        Validates the digital signature of a file.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        
+        [Parameter(Mandatory = $false)]
+        [string[]]$TrustedPublishers = @(),
+        
+        [Parameter(Mandatory = $false)]
+        [bool]$RequireValidSignature = $false,
+        
+        [Parameter(Mandatory = $false)]
+        [bool]$CheckRevocation = $true
+    )
+    
+    try {
+        if (-not (Test-Path $FilePath)) {
+            return @{
+                IsValid = $false
+                Status = "FileNotFound"
+                Message = "File not found: $FilePath"
+            }
+        }
+        
+        $signature = Get-AuthenticodeSignature -FilePath $FilePath -ErrorAction Stop
+        
+        $result = @{
+            IsValid = $false
+            Status = $signature.Status.ToString()
+            SignerCertificate = $null
+            Publisher = $null
+            Thumbprint = $null
+            Message = ""
+        }
+        
+        if ($signature.Status -eq 'Valid') {
+            $result.IsValid = $true
+            $result.SignerCertificate = $signature.SignerCertificate
+            $result.Publisher = $signature.SignerCertificate.Subject
+            $result.Thumbprint = $signature.SignerCertificate.Thumbprint
+            $result.Message = "Signature is valid"
+            
+            if ($TrustedPublishers.Count -gt 0) {
+                $isTrusted = $false
+                foreach ($publisher in $TrustedPublishers) {
+                    if ($result.Publisher -like "*$publisher*") {
+                        $isTrusted = $true
+                        break
+                    }
+                }
+                
+                if (-not $isTrusted) {
+                    $result.IsValid = $false
+                    $result.Message = "Publisher not in trusted list: $($result.Publisher)"
+                }
+            }
+        } else {
+            $result.Message = "Signature status: $($signature.Status)"
+            
+            if ($signature.Status -eq 'NotSigned') {
+                $result.Message = "File is not digitally signed"
+            } elseif ($signature.Status -eq 'HashMismatch') {
+                $result.Message = "File hash does not match signature"
+            } elseif ($signature.Status -eq 'NotTrusted') {
+                $result.Message = "Certificate is not trusted"
+            }
+            
+            if ($RequireValidSignature) {
+                $result.IsValid = $false
+            }
+        }
+        
+        return $result
+    } catch {
+        return @{
+            IsValid = $false
+            Status = "Error"
+            Message = "Error validating signature: $_"
+        }
+    }
+}
+
+function Initialize-HashDatabase {
+    <#
+    .SYNOPSIS
+        Initializes the package hash database.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$DatabasePath = ".\cache\package-hashes.json"
+    )
+    
+    try {
+        $dbDir = Split-Path -Parent $DatabasePath
+        if (-not (Test-Path $dbDir)) {
+            New-Item -ItemType Directory -Path $dbDir -Force | Out-Null
+        }
+        
+        if (-not (Test-Path $DatabasePath)) {
+            $initialDb = @{
+                CreatedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+                LastUpdated = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+                Packages = @{}
+            }
+            
+            $initialDb | ConvertTo-Json -Depth 10 | Set-Content $DatabasePath -Encoding UTF8
+            Write-Log "Hash database initialized: $DatabasePath" -Level "Info"
+        }
+        
+        return $true
+    } catch {
+        Write-Log "Error initializing hash database: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Get-HashDatabase {
+    <#
+    .SYNOPSIS
+        Retrieves the package hash database.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$DatabasePath = ".\cache\package-hashes.json"
+    )
+    
+    try {
+        if (-not (Test-Path $DatabasePath)) {
+            Initialize-HashDatabase -DatabasePath $DatabasePath
+        }
+        
+        $db = Get-Content $DatabasePath -Raw | ConvertFrom-Json
+        return $db
+    } catch {
+        Write-Log "Error reading hash database: $_" -Level "Error"
+        return $null
+    }
+}
+
+function Save-PackageHash {
+    <#
+    .SYNOPSIS
+        Saves package hash to database.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Version,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Hash,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$FilePath = "",
+        
+        [Parameter(Mandatory = $false)]
+        [string]$DatabasePath = ".\cache\package-hashes.json"
+    )
+    
+    try {
+        $db = Get-HashDatabase -DatabasePath $DatabasePath
+        if (-not $db) { return $false }
+        
+        $key = "$Source/$PackageName"
+        $db.Packages.$key = @{
+            PackageName = $PackageName
+            Source = $Source
+            Version = $Version
+            Hash = $Hash
+            Algorithm = "SHA256"
+            FilePath = $FilePath
+            Timestamp = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        }
+        
+        $db.LastUpdated = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+        $db | ConvertTo-Json -Depth 10 | Set-Content $DatabasePath -Encoding UTF8
+        
+        return $true
+    } catch {
+        Write-Log "Error saving package hash: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Get-PackageHash {
+    <#
+    .SYNOPSIS
+        Retrieves stored hash for a package.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$DatabasePath = ".\cache\package-hashes.json"
+    )
+    
+    try {
+        $db = Get-HashDatabase -DatabasePath $DatabasePath
+        if (-not $db) { return $null }
+        
+        $key = "$Source/$PackageName"
+        if ($db.Packages.PSObject.Properties.Name -contains $key) {
+            return $db.Packages.$key
+        }
+        
+        return $null
+    } catch {
+        Write-Log "Error retrieving package hash: $_" -Level "Error"
+        return $null
+    }
+}
+
+function Test-PackageIntegrity {
+    <#
+    .SYNOPSIS
+        Validates package integrity using hash and signature.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ExpectedHash = "",
+        
+        [Parameter(Mandatory = $false)]
+        [object]$Config
+    )
+    
+    if (-not $Config) {
+        $Config = Get-UpdateConfig
+    }
+    
+    if (-not $Config.SecurityValidation.EnableHashVerification -and 
+        -not $Config.SecurityValidation.EnableSignatureValidation) {
+        return @{
+            Success = $true
+            Method = "Skipped"
+            Message = "Security validation disabled"
+        }
+    }
+    
+    $result = @{
+        Success = $true
+        HashValidation = $null
+        SignatureValidation = $null
+        Message = ""
+    }
+    
+    try {
+        $exePath = Get-PackageExecutablePath -PackageName $PackageName -Source $Source
+        
+        if (-not $exePath) {
+            return @{
+                Success = $false
+                Method = "PathNotFound"
+                Message = "Could not locate package executable"
+            }
+        }
+        
+        if ($Config.SecurityValidation.EnableHashVerification) {
+            $currentHash = Get-FileHash256 -FilePath $exePath -Algorithm $Config.SecurityValidation.HashAlgorithm
+            
+            if ($currentHash) {
+                $storedHash = Get-PackageHash -PackageName $PackageName -Source $Source -DatabasePath $Config.SecurityValidation.HashDatabasePath
+                
+                $hashResult = @{
+                    CurrentHash = $currentHash
+                    StoredHash = $storedHash.Hash
+                    Algorithm = $Config.SecurityValidation.HashAlgorithm
+                    IsValid = $true
+                    Message = "Hash calculated successfully"
+                }
+                
+                if ($ExpectedHash -and $currentHash -ne $ExpectedHash) {
+                    $hashResult.IsValid = $false
+                    $hashResult.Message = "Hash mismatch with expected value"
+                    $result.Success = $false
+                } elseif ($storedHash -and $currentHash -ne $storedHash.Hash) {
+                    $hashResult.IsValid = $false
+                    $hashResult.Message = "Hash mismatch with stored value"
+                    $result.Success = $false
+                } else {
+                    if ($Config.SecurityValidation.SaveHashDatabase) {
+                        Save-PackageHash -PackageName $PackageName -Source $Source `
+                            -Version "Latest" -Hash $currentHash -FilePath $exePath `
+                            -DatabasePath $Config.SecurityValidation.HashDatabasePath
+                    }
+                }
+                
+                $result.HashValidation = $hashResult
+            } else {
+                $result.Success = $false
+                $result.Message = "Failed to calculate hash"
+            }
+        }
+        
+        if ($Config.SecurityValidation.EnableSignatureValidation) {
+            $signatureResult = Test-AuthenticodeSignature -FilePath $exePath `
+                -TrustedPublishers $Config.SecurityValidation.TrustedPublishers `
+                -RequireValidSignature $Config.SecurityValidation.RequireValidSignature `
+                -CheckRevocation $Config.SecurityValidation.CheckCertificateRevocation
+            
+            $result.SignatureValidation = $signatureResult
+            
+            if (-not $signatureResult.IsValid -and $Config.SecurityValidation.RequireValidSignature) {
+                $result.Success = $false
+                $result.Message += " Signature validation failed: $($signatureResult.Message)"
+            }
+            
+            if ($Config.SecurityValidation.BlockUntrustedPackages -and -not $signatureResult.IsValid) {
+                $result.Success = $false
+                $result.Message += " Package blocked: untrusted signature"
+            }
+        }
+        
+        if ($result.Success) {
+            $result.Message = "Package integrity validated successfully"
+        }
+        
+        return $result
+    } catch {
+        return @{
+            Success = $false
+            Method = "Error"
+            Message = "Error validating package integrity: $_"
+        }
+    }
+}
+
+function Invoke-SecurityValidation {
+    <#
+    .SYNOPSIS
+        Performs security validation on multiple packages.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [array]$Packages,
+        
+        [Parameter(Mandatory = $false)]
+        [object]$Config
+    )
+    
+    if (-not $Config) {
+        $Config = Get-UpdateConfig
+    }
+    
+    $results = @()
+    
+    foreach ($package in $Packages) {
+        Write-Log "Validating security for $($package.Name) ($($package.Source))..." -Level "Info"
+        
+        $validation = Test-PackageIntegrity `
+            -PackageName $package.Name `
+            -Source $package.Source `
+            -Config $Config
+        
+        $result = [PSCustomObject]@{
+            PackageName = $package.Name
+            Source = $package.Source
+            SecurityPassed = $validation.Success
+            HashValid = if ($validation.HashValidation) { $validation.HashValidation.IsValid } else { $null }
+            SignatureValid = if ($validation.SignatureValidation) { $validation.SignatureValidation.IsValid } else { $null }
+            Publisher = if ($validation.SignatureValidation) { $validation.SignatureValidation.Publisher } else { $null }
+            Message = $validation.Message
+        }
+        
+        $results += $result
+        
+        if ($validation.Success) {
+            Write-Log "Security validation passed: $($package.Name)" -Level "Success"
+        } else {
+            Write-Log "Security validation failed: $($package.Name) - $($validation.Message)" -Level "Warning"
+        }
+    }
+    
+    return $results
+}
+
+function New-SecurityReport {
+    <#
+    .SYNOPSIS
+        Creates a security validation report.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [array]$ValidationResults,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$OutputPath,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("HTML", "JSON", "Text")]
+        [string]$Format = "HTML"
+    )
+    
+    try {
+        $passedCount = ($ValidationResults | Where-Object { $_.SecurityPassed }).Count
+        $failedCount = ($ValidationResults | Where-Object { -not $_.SecurityPassed }).Count
+        $totalCount = $ValidationResults.Count
+        
+        switch ($Format) {
+            "HTML" {
+                $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                
+                $html = @'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Validation Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 3px solid #e74c3c; padding-bottom: 10px; }
+        .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }
+        .summary-card { padding: 20px; border-radius: 8px; text-align: center; }
+        .total { background: #3498db; color: white; }
+        .success { background: #2ecc71; color: white; }
+        .failure { background: #e74c3c; color: white; }
+        .summary-number { font-size: 36px; font-weight: bold; }
+        .summary-label { font-size: 14px; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #e74c3c; color: white; padding: 12px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        tr:hover { background: #f8f9fa; }
+        .status-pass { color: #2ecc71; font-weight: bold; }
+        .status-fail { color: #e74c3c; font-weight: bold; }
+        .status-na { color: #95a5a6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Security Validation Report</h1>
+        <p><strong>Generated:</strong> {0}</p>
+        <div class="summary">
+            <div class="summary-card total"><div class="summary-number">{1}</div><div class="summary-label">Total</div></div>
+            <div class="summary-card success"><div class="summary-number">{2}</div><div class="summary-label">Passed</div></div>
+            <div class="summary-card failure"><div class="summary-number">{3}</div><div class="summary-label">Failed</div></div>
+        </div>
+        <table><tr><th>Package</th><th>Source</th><th>Hash</th><th>Signature</th><th>Publisher</th><th>Status</th></tr>
+'@
+                
+                $html = $html -f $timestamp, $totalCount, $passedCount, $failedCount
+                
+                foreach ($result in $ValidationResults) {
+                    $statusClass = if ($result.SecurityPassed) { "status-pass" } else { "status-fail" }
+                    $statusText = if ($result.SecurityPassed) { "Passed" } else { "Failed" }
+                    $hashStatus = if ($null -eq $result.HashValid) { "N/A" } elseif ($result.HashValid) { "Valid" } else { "Invalid" }
+                    $sigStatus = if ($null -eq $result.SignatureValid) { "N/A" } elseif ($result.SignatureValid) { "Valid" } else { "Invalid" }
+                    $publisher = if ($result.Publisher) { $result.Publisher } else { "N/A" }
+                    
+                    $html += "<tr><td>$($result.PackageName)</td><td>$($result.Source)</td><td>$hashStatus</td><td>$sigStatus</td><td>$publisher</td><td class=`"$statusClass`">$statusText</td></tr>"
+                }
+                
+                $html += "</table></div></body></html>"
+                $html | Set-Content $OutputPath -Encoding UTF8
+            }
+            
+            "JSON" {
+                $report = @{
+                    GeneratedAt = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+                    Summary = @{
+                        Total = $totalCount
+                        Passed = $passedCount
+                        Failed = $failedCount
+                    }
+                    Results = $ValidationResults
+                }
+                
+                $report | ConvertTo-Json -Depth 10 | Set-Content $OutputPath -Encoding UTF8
+            }
+            
+            "Text" {
+                $lines = @()
+                $lines += "Security Validation Report"
+                $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+                $lines += "Generated: $timestamp"
+                $lines += ""
+                $lines += "Summary:"
+                $lines += "Total: $totalCount - Passed: $passedCount - Failed: $failedCount"
+                $lines += ""
+                
+                foreach ($result in $ValidationResults) {
+                    if ($result.SecurityPassed) {
+                        $status = "[PASS]"
+                    } else {
+                        $status = "[FAIL]"
+                    }
+                    $line = "{0} {1} ({2}) - Hash: {3} - Sig: {4} - {5}" -f $status, $result.PackageName, $result.Source, 
+                        $(if ($null -eq $result.HashValid) { "N/A" } elseif ($result.HashValid) { "Valid" } else { "Invalid" }),
+                        $(if ($null -eq $result.SignatureValid) { "N/A" } elseif ($result.SignatureValid) { "Valid" } else { "Invalid" }),
+                        $result.Message
+                    $lines += $line
+                }
+                
+                $output = $lines -join [Environment]::NewLine
+                $output | Set-Content $OutputPath -Encoding UTF8
+            }
+        }
+        
+        Write-Log "Security report saved: $OutputPath" -Level "Info"
+        return $true
+    } catch {
+        Write-Log "Error creating security report: $_" -Level "Error"
+        return $false
+    }
+}
+
 # Export module members
 Export-ModuleMember -Function @(
     'Get-UpdateConfig',
@@ -2188,5 +2809,15 @@ Export-ModuleMember -Function @(
     'Test-UpdateSuccess',
     'Test-PackageHealth',
     'Invoke-UpdateValidation',
-    'New-ValidationReport'
+    'New-ValidationReport',
+    'Get-FileHash256',
+    'Get-PackageExecutablePath',
+    'Test-AuthenticodeSignature',
+    'Initialize-HashDatabase',
+    'Get-HashDatabase',
+    'Save-PackageHash',
+    'Get-PackageHash',
+    'Test-PackageIntegrity',
+    'Invoke-SecurityValidation',
+    'New-SecurityReport'
 )

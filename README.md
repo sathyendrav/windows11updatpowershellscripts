@@ -140,6 +140,7 @@ Interactive tool for managing update priorities:
 - **⚡ Differential Updates** - Smart caching system that only processes packages with actual version changes
 - **🎯 Package Priority/Ordering** - Control update sequence with Critical, High, Normal, Low, and Deferred priority levels
 - **✅ Update Validation** - Verify updates succeeded with version checks, health validation, and detailed reporting
+- **🔐 Security Validation** - Hash verification and digital signature validation for package integrity and authenticity
 
 ---
 
@@ -1010,6 +1011,186 @@ Reports include:
 - **HTML** - Styled report with color-coded results
 - **JSON** - Structured data for programmatic access
 - **Text** - Plain text for easy reading
+
+---
+
+## 🔐 Security Validation
+
+The security validation system verifies package integrity and authenticity using cryptographic hash verification and digital signature validation.
+
+### Features
+
+- **🔒 Hash Verification** - Calculate and verify SHA256/SHA512/MD5/SHA1 hashes of package executables
+- **✍️ Digital Signatures** - Validate Authenticode signatures on Windows executables
+- **🛡️ Trusted Publishers** - Verify packages are signed by trusted publishers (Microsoft, etc.)
+- **📋 Certificate Validation** - Check certificate validity, revocation status, and chain of trust
+- **💾 Hash Database** - Track package hashes across versions for integrity monitoring
+- **📊 Security Reports** - Generate detailed HTML, JSON, or text security reports
+- **⚙️ Configurable Policies** - Require signatures, block untrusted packages, enforce hash checks
+
+### Configuration
+
+Edit `config.json` to customize security validation:
+
+```json
+{
+  "SecurityValidation": {
+    "EnableHashVerification": true,
+    "EnableSignatureValidation": true,
+    "HashAlgorithm": "SHA256",
+    "RequireValidSignature": false,
+    "TrustedPublishers": [
+      "Microsoft Corporation",
+      "Microsoft Windows",
+      "Chocolatey Software, Inc."
+    ],
+    "BlockUntrustedPackages": false,
+    "VerifyBeforeUpdate": true,
+    "VerifyAfterUpdate": true,
+    "HashValidationTimeout": 60,
+    "SaveHashDatabase": true,
+    "HashDatabasePath": ".\\cache\\package-hashes.json",
+    "SignatureValidationMethods": {
+      "Winget": "Authenticode",
+      "Chocolatey": "Authenticode",
+      "Store": "AppX"
+    },
+    "AllowSelfSignedCertificates": false,
+    "CheckCertificateRevocation": true,
+    "TrustedCertificateThumbprints": []
+  }
+}
+```
+
+### Security Policy Options
+
+- **RequireValidSignature** - Fail validation if signature is missing or invalid
+- **BlockUntrustedPackages** - Prevent installation of packages from untrusted publishers
+- **CheckCertificateRevocation** - Verify certificates haven't been revoked (requires internet)
+- **AllowSelfSignedCertificates** - Accept self-signed certificates (not recommended)
+- **VerifyBeforeUpdate** - Check integrity before installing updates
+- **VerifyAfterUpdate** - Verify integrity after installation completes
+
+### Hash Database
+
+The hash database (`package-hashes.json`) stores cryptographic hashes for all validated packages:
+
+```json
+{
+  "CreatedAt": "2025-01-19T10:30:00",
+  "LastUpdated": "2025-01-19T15:45:00",
+  "Packages": {
+    "Winget:Git.Git": [
+      {
+        "Version": "2.44.0",
+        "Hash": "a3f5c...",
+        "Algorithm": "SHA256",
+        "FilePath": "C:\\Program Files\\Git\\bin\\git.exe",
+        "Timestamp": "2025-01-19T15:45:00"
+      }
+    ]
+  }
+}
+```
+
+This enables:
+- **Change Detection** - Identify unexpected modifications to package files
+- **Version Tracking** - Maintain hash history across package versions
+- **Audit Trail** - Record when packages were validated and their integrity status
+
+### Trusted Publishers
+
+Configure trusted publishers to verify package authenticity:
+
+```json
+"TrustedPublishers": [
+  "Microsoft Corporation",
+  "Microsoft Windows",
+  "Chocolatey Software, Inc.",
+  "Google LLC",
+  "Mozilla Corporation",
+  "VideoLAN",
+  "7-Zip"
+]
+```
+
+Packages signed by these publishers will pass signature validation. Set `BlockUntrustedPackages: true` to reject packages from other publishers.
+
+### Using Security Functions
+
+```powershell
+# Calculate file hash
+$hash = Get-FileHash256 -FilePath "C:\Program Files\Git\bin\git.exe" `
+  -Algorithm "SHA256"
+
+# Find package executable path
+$exePath = Get-PackageExecutablePath -PackageName "Git.Git" -Source "Winget"
+
+# Validate digital signature
+$sigResult = Test-AuthenticodeSignature -FilePath $exePath `
+  -TrustedPublishers @("Microsoft Corporation") `
+  -CheckRevocation $true
+
+# Test package integrity (hash + signature)
+$integrity = Test-PackageIntegrity -PackageName "Git.Git" `
+  -Source "Winget" -Version "2.44.0" `
+  -EnableHashVerification $true -EnableSignatureValidation $true
+
+# Batch security validation
+$packages = @(
+  @{ PackageName = "Git.Git"; Source = "Winget"; Version = "2.44.0" },
+  @{ PackageName = "Python.Python.3"; Source = "Winget"; Version = "3.12.0" }
+)
+$results = Invoke-SecurityValidation -Packages $packages
+
+# Generate security report
+New-SecurityReport -SecurityResults $results `
+  -OutputPath ".\reports\security.html" -Format "HTML"
+```
+
+### Hash Database Management
+
+```powershell
+# Initialize hash database
+Initialize-HashDatabase -DatabasePath ".\cache\package-hashes.json"
+
+# Save package hash
+Save-PackageHash -PackageName "Git.Git" -Source "Winget" `
+  -Version "2.44.0" -Hash "a3f5c..." -Algorithm "SHA256" `
+  -FilePath "C:\Program Files\Git\bin\git.exe"
+
+# Retrieve stored hash
+$storedHash = Get-PackageHash -PackageName "Git.Git" -Source "Winget"
+
+# Load entire database
+$database = Get-HashDatabase -DatabasePath ".\cache\package-hashes.json"
+```
+
+### Security Reports
+
+Reports include:
+- 🔐 **Summary Statistics** - Total packages, passed, failed security checks
+- 📦 **Package Details** - Name, source, version, file paths
+- ✅ **Hash Validation** - Algorithm used, calculated hash, comparison result
+- ✍️ **Signature Validation** - Signer certificate, publisher, validity status
+- 🛡️ **Trust Status** - Whether publisher is trusted, certificate details
+- ⚠️ **Security Issues** - Missing signatures, hash mismatches, untrusted publishers
+
+**Report Formats:**
+- **HTML** - Styled report with red security theme and color-coded results
+- **JSON** - Structured data for SIEM/security tool integration
+- **Text** - Plain text for auditing and compliance
+
+### Security Best Practices
+
+1. **Enable Both Validations** - Use hash verification AND signature validation together
+2. **Verify After Updates** - Always check integrity after installing updates
+3. **Monitor Hash Database** - Review changes in package hashes between versions
+4. **Restrict Trusted Publishers** - Only trust well-known, verified publishers
+5. **Check Revocation** - Enable certificate revocation checking (requires internet)
+6. **Review Reports** - Regularly audit security validation reports for anomalies
+7. **Block Untrusted** - Consider setting `BlockUntrustedPackages: true` in production
+8. **Backup Hash Database** - Keep backups of `package-hashes.json` for audit trails
 
 ---
 

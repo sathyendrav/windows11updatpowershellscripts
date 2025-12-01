@@ -130,5 +130,30 @@
       "Microsoft.PowerShell": "pwsh --version",
       "Microsoft.WindowsTerminal": ""
     }
+  },
+  "SecurityValidation": {
+    "EnableHashVerification": true,
+    "EnableSignatureValidation": true,
+    "HashAlgorithm": "SHA256",
+    "RequireValidSignature": false,
+    "TrustedPublishers": [
+      "Microsoft Corporation",
+      "Microsoft Windows",
+      "Chocolatey Software, Inc."
+    ],
+    "BlockUntrustedPackages": false,
+    "VerifyBeforeUpdate": true,
+    "VerifyAfterUpdate": true,
+    "HashValidationTimeout": 60,
+    "SaveHashDatabase": true,
+    "HashDatabasePath": ".\\cache\\package-hashes.json",
+    "SignatureValidationMethods": {
+      "Winget": "Authenticode",
+      "Chocolatey": "Authenticode",
+      "Store": "AppX"
+    },
+    "AllowSelfSignedCertificates": false,
+    "CheckCertificateRevocation": true,
+    "TrustedCertificateThumbprints": []
   }
 }

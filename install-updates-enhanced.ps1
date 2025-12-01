@@ -118,6 +118,14 @@ $reportData = @{
 # Initialize validation tracking
 $validationPackages = @()
 
+# Initialize security validation tracking
+$securityPackages = @()
+
+# Initialize hash database if security validation enabled
+if ($config.SecurityValidation.EnableHashVerification) {
+    Initialize-HashDatabase -DatabasePath $config.SecurityValidation.HashDatabasePath
+}
+
 # ============================================================================
 # Pre-flight Checks
 # ============================================================================
@@ -400,6 +408,54 @@ if ($config.UpdateValidation.EnableValidation -and $validationPackages.Count -gt
         Successful = $successCount
         Failed = $failureCount
         Results = $validationResults
+    }
+}
+
+# ============================================================================
+# Security Validation
+# ============================================================================
+
+if (($config.SecurityValidation.EnableHashVerification -or $config.SecurityValidation.EnableSignatureValidation) -and 
+    $validationPackages.Count -gt 0) {
+    Write-Log "`n" + ("=" * 70) -Level "Info"
+    Write-Log "SECURITY VALIDATION" -Level "Info"
+    Write-Log ("=" * 70) -Level "Info"
+    
+    Write-Log "Performing security validation on $($validationPackages.Count) packages..." -Level "Info"
+    
+    # Perform security validation
+    $securityResults = Invoke-SecurityValidation -Packages $validationPackages -Config $config
+    
+    # Generate security report
+    $securityReportPath = Join-Path $config.ReportSettings.ReportDirectory "security-report-$(Get-Date -Format 'yyyyMMdd-HHmmss').html"
+    $reportCreated = New-SecurityReport -ValidationResults $securityResults -OutputPath $securityReportPath -Format "HTML"
+    
+    if ($reportCreated) {
+        Write-Log "Security report saved to: $securityReportPath" -Level "Success"
+    }
+    
+    # Summary
+    $securityPassCount = ($securityResults | Where-Object { $_.SecurityPassed }).Count
+    $securityFailCount = ($securityResults | Where-Object { -not $_.SecurityPassed }).Count
+    Write-Log "`nSecurity Summary: $securityPassCount passed, $securityFailCount failed" -Level "Info"
+    
+    # Check for critical security failures
+    if ($config.SecurityValidation.BlockUntrustedPackages) {
+        $criticalFailures = $securityResults | Where-Object { -not $_.SecurityPassed }
+        if ($criticalFailures.Count -gt 0) {
+            Write-Log "WARNING: $($criticalFailures.Count) package(s) failed security validation!" -Level "Warning"
+            foreach ($failure in $criticalFailures) {
+                Write-Log "  - $($failure.PackageName): $($failure.Message)" -Level "Warning"
+            }
+        }
+    }
+    
+    # Add security data to report
+    $reportData.Security = @{
+        Total = $securityResults.Count
+        Passed = $securityPassCount
+        Failed = $securityFailCount
+        Results = $securityResults
     }
 }
 
