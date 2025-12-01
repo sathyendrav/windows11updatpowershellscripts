@@ -2,9 +2,19 @@
 
 # 🔄 Windows Update Helper Scripts
 
-![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207.x-blue?style=for-the-badge&logo=powershell)
-![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?style=for-the-badge&logo=windows)
-![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207.x-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?style=for-the-badge&logo=windows&logoColor=white)
+![License](https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge&logo=windows-terminal)
+![Scripts](https://img.shields.io/badge/Scripts-9+-orange?style=for-the-badge&logo=files)
+![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
+
+![Winget](https://img.shields.io/badge/Winget-Supported-blue?style=flat-square&logo=windows-terminal)
+![Chocolatey](https://img.shields.io/badge/Chocolatey-Supported-80B5E3?style=flat-square&logo=chocolatey)
+![Store](https://img.shields.io/badge/Microsoft%20Store-Supported-0078D4?style=flat-square&logo=microsoft)
+![Automation](https://img.shields.io/badge/Automation-Ready-brightgreen?style=flat-square&logo=clockify)
+![Help](https://img.shields.io/badge/Get--Help-Full%20Support-informational?style=flat-square&logo=powershell)
+![Config](https://img.shields.io/badge/Config-JSON-lightgrey?style=flat-square&logo=json)
 
 **Automate and manage Windows updates across multiple package managers**
 
