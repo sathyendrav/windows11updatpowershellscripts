@@ -1159,6 +1159,289 @@ function Send-UpdateNotification {
     return Send-ToastNotification -Title $template.Title -Message $template.Message -Icon $template.Icon
 }
 
+# ============================================================================
+# Differential Update Cache Functions
+# ============================================================================
+
+function Initialize-PackageCache {
+    <#
+    .SYNOPSIS
+        Initializes the package version cache.
+    .DESCRIPTION
+        Creates the cache directory and file structure if they don't exist.
+    .PARAMETER CachePath
+        Path to the cache file. Defaults to .\cache\package-cache.json
+    #>
+    param(
+        [string]$CachePath = "$PSScriptRoot\..\cache\package-cache.json"
+    )
+    
+    $cacheDir = Split-Path $CachePath -Parent
+    
+    # Create cache directory if it doesn't exist
+    if (-not (Test-Path $cacheDir)) {
+        New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+        Write-Log "Created cache directory: $cacheDir" -Level "Info"
+    }
+    
+    # Create empty cache file if it doesn't exist
+    if (-not (Test-Path $CachePath)) {
+        $emptyCache = @{
+            LastUpdated = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            Packages = @{
+                Store = @()
+                Winget = @()
+                Chocolatey = @()
+            }
+        }
+        
+        $emptyCache | ConvertTo-Json -Depth 10 | Set-Content $CachePath -Encoding UTF8
+        Write-Log "Initialized package cache: $CachePath" -Level "Info"
+    }
+}
+
+function Get-PackageCache {
+    <#
+    .SYNOPSIS
+        Retrieves the package version cache.
+    .DESCRIPTION
+        Loads and returns the cached package versions.
+    .PARAMETER CachePath
+        Path to the cache file.
+    .PARAMETER Source
+        Filter by source (Store, Winget, or Chocolatey). Returns all if not specified.
+    #>
+    param(
+        [string]$CachePath = "$PSScriptRoot\..\cache\package-cache.json",
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source
+    )
+    
+    if (-not (Test-Path $CachePath)) {
+        Write-Log "Cache file not found. Initializing..." -Level "Warning"
+        Initialize-PackageCache -CachePath $CachePath
+    }
+    
+    try {
+        $cache = Get-Content $CachePath -Raw | ConvertFrom-Json
+        
+        if ($Source) {
+            return $cache.Packages.$Source
+        } else {
+            return $cache
+        }
+    } catch {
+        Write-Log "Error reading cache: $_" -Level "Error"
+        return $null
+    }
+}
+
+function Update-PackageCache {
+    <#
+    .SYNOPSIS
+        Updates the package version cache with current package information.
+    .DESCRIPTION
+        Stores package name, version, and source in the cache for future comparison.
+    .PARAMETER PackageName
+        Name of the package.
+    .PARAMETER Version
+        Current version of the package.
+    .PARAMETER Source
+        Package source (Store, Winget, or Chocolatey).
+    .PARAMETER CachePath
+        Path to the cache file.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Version,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [string]$CachePath = "$PSScriptRoot\..\cache\package-cache.json"
+    )
+    
+    Initialize-PackageCache -CachePath $CachePath
+    
+    try {
+        $cache = Get-Content $CachePath -Raw | ConvertFrom-Json
+        
+        # Find existing package entry
+        $existingIndex = -1
+        for ($i = 0; $i -lt $cache.Packages.$Source.Count; $i++) {
+            if ($cache.Packages.$Source[$i].Name -eq $PackageName) {
+                $existingIndex = $i
+                break
+            }
+        }
+        
+        $packageEntry = @{
+            Name = $PackageName
+            Version = $Version
+            LastUpdated = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        }
+        
+        # Update or add package entry
+        if ($existingIndex -ge 0) {
+            $cache.Packages.$Source[$existingIndex] = $packageEntry
+        } else {
+            $cache.Packages.$Source += $packageEntry
+        }
+        
+        # Update cache timestamp
+        $cache.LastUpdated = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        
+        # Save cache
+        $cache | ConvertTo-Json -Depth 10 | Set-Content $CachePath -Encoding UTF8
+        
+        Write-Log "Updated cache for $Source package: $PackageName ($Version)" -Level "Info"
+        return $true
+    } catch {
+        Write-Log "Error updating cache: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Compare-PackageVersions {
+    <#
+    .SYNOPSIS
+        Compares current package list with cached versions to detect changes.
+    .DESCRIPTION
+        Returns only packages that have version differences or are new.
+    .PARAMETER CurrentPackages
+        Array of current package objects with Name and Version properties.
+    .PARAMETER Source
+        Package source (Store, Winget, or Chocolatey).
+    .PARAMETER CachePath
+        Path to the cache file.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [array]$CurrentPackages,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [string]$CachePath = "$PSScriptRoot\..\cache\package-cache.json"
+    )
+    
+    $cachedPackages = Get-PackageCache -CachePath $CachePath -Source $Source
+    $changedPackages = @()
+    
+    foreach ($package in $CurrentPackages) {
+        $cached = $cachedPackages | Where-Object { $_.Name -eq $package.Name }
+        
+        if (-not $cached) {
+            # New package
+            $package | Add-Member -MemberType NoteProperty -Name "ChangeType" -Value "New" -Force
+            $package | Add-Member -MemberType NoteProperty -Name "PreviousVersion" -Value "N/A" -Force
+            $changedPackages += $package
+        } elseif ($cached.Version -ne $package.Version) {
+            # Version changed
+            $package | Add-Member -MemberType NoteProperty -Name "ChangeType" -Value "Updated" -Force
+            $package | Add-Member -MemberType NoteProperty -Name "PreviousVersion" -Value $cached.Version -Force
+            $changedPackages += $package
+        }
+        # If versions match, skip (no change)
+    }
+    
+    return $changedPackages
+}
+
+function Clear-PackageCache {
+    <#
+    .SYNOPSIS
+        Clears the package version cache.
+    .DESCRIPTION
+        Removes all cached package information or specific source.
+    .PARAMETER Source
+        Clear only specific source (Store, Winget, or Chocolatey). Clears all if not specified.
+    .PARAMETER CachePath
+        Path to the cache file.
+    #>
+    param(
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [string]$CachePath = "$PSScriptRoot\..\cache\package-cache.json"
+    )
+    
+    if (-not (Test-Path $CachePath)) {
+        Write-Log "Cache file not found. Nothing to clear." -Level "Warning"
+        return $true
+    }
+    
+    try {
+        if ($Source) {
+            # Clear specific source
+            $cache = Get-Content $CachePath -Raw | ConvertFrom-Json
+            $cache.Packages.$Source = @()
+            $cache.LastUpdated = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            $cache | ConvertTo-Json -Depth 10 | Set-Content $CachePath -Encoding UTF8
+            Write-Log "Cleared $Source cache" -Level "Info"
+        } else {
+            # Clear entire cache
+            Remove-Item $CachePath -Force
+            Initialize-PackageCache -CachePath $CachePath
+            Write-Log "Cleared entire package cache" -Level "Info"
+        }
+        
+        return $true
+    } catch {
+        Write-Log "Error clearing cache: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Get-CacheStatistics {
+    <#
+    .SYNOPSIS
+        Gets statistics about the package cache.
+    .DESCRIPTION
+        Returns information about cached packages and cache age.
+    .PARAMETER CachePath
+        Path to the cache file.
+    #>
+    param(
+        [string]$CachePath = "$PSScriptRoot\..\cache\package-cache.json"
+    )
+    
+    if (-not (Test-Path $CachePath)) {
+        return @{
+            Exists = $false
+            Message = "Cache not initialized"
+        }
+    }
+    
+    try {
+        $cache = Get-Content $CachePath -Raw | ConvertFrom-Json
+        $lastUpdated = [DateTime]::ParseExact($cache.LastUpdated, "yyyy-MM-dd HH:mm:ss", $null)
+        $age = (Get-Date) - $lastUpdated
+        
+        return @{
+            Exists = $true
+            LastUpdated = $cache.LastUpdated
+            AgeInHours = [math]::Round($age.TotalHours, 2)
+            AgeInDays = [math]::Round($age.TotalDays, 2)
+            StorePackages = $cache.Packages.Store.Count
+            WingetPackages = $cache.Packages.Winget.Count
+            ChocolateyPackages = $cache.Packages.Chocolatey.Count
+            TotalPackages = $cache.Packages.Store.Count + $cache.Packages.Winget.Count + $cache.Packages.Chocolatey.Count
+        }
+    } catch {
+        Write-Log "Error reading cache statistics: $_" -Level "Error"
+        return @{
+            Exists = $true
+            Error = $_.Exception.Message
+        }
+    }
+}
+
 # Export module members
 Export-ModuleMember -Function @(
     'Get-UpdateConfig',
@@ -1179,5 +1462,11 @@ Export-ModuleMember -Function @(
     'Add-UpdateHistoryEntry',
     'Get-UpdateHistory',
     'Clear-UpdateHistory',
-    'Export-UpdateHistoryReport'
+    'Export-UpdateHistoryReport',
+    'Initialize-PackageCache',
+    'Get-PackageCache',
+    'Update-PackageCache',
+    'Compare-PackageVersions',
+    'Clear-PackageCache',
+    'Get-CacheStatistics'
 )

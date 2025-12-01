@@ -23,6 +23,11 @@ rollback-temp/
 restore-backup/
 package-cache/
 
+# Differential update cache
+cache/*.json
+# Keep cache directory structure
+!cache/.gitkeep
+
 # Windows thumbnail cache
 Thumbs.db
 ehthumbs.db

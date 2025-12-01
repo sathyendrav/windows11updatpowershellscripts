@@ -61,6 +61,18 @@ Write-Log "=" * 70 -Level "Info"
 # Send start notification
 Send-UpdateNotification -Type "Start" -Config $config
 
+# Initialize cache if differential updates enabled
+$useDifferentialUpdates = $config -and $config.DifferentialUpdates.EnableDifferentialUpdates
+if ($useDifferentialUpdates) {
+    Write-Log "Differential updates enabled - will compare with cached versions" -Level "Info"
+    $cachePath = if ($config.DifferentialUpdates.CachePath) { 
+        Join-Path $PSScriptRoot $config.DifferentialUpdates.CachePath.TrimStart(".\")
+    } else { 
+        "$PSScriptRoot\cache\package-cache.json" 
+    }
+    Initialize-PackageCache -CachePath $cachePath
+}
+
 # ============================================================================
 # Microsoft Store Updates Check
 # ============================================================================
@@ -98,8 +110,68 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
     try {
         # List all packages with available upgrades
         # This command only displays what CAN be updated - it does NOT install anything
-        $wingetOutput = winget upgrade 2>&1 | Out-String
-        Write-Log $wingetOutput -Level "Info"
+        $wingetOutput = winget upgrade --include-unknown 2>&1
+        
+        if ($useDifferentialUpdates) {
+            # Parse winget output to get package list
+            $wingetPackages = @()
+            $lines = $wingetOutput | Where-Object { $_ -match '\S' }
+            $inPackageList = $false
+            
+            foreach ($line in $lines) {
+                if ($line -match '^Name\s+Id\s+Version\s+Available') {
+                    $inPackageList = $true
+                    continue
+                }
+                if ($inPackageList -and $line -match '^\-+') {
+                    continue
+                }
+                if ($inPackageList -and $line -match '^\s*$') {
+                    break
+                }
+                if ($inPackageList) {
+                    # Parse package line
+                    if ($line -match '^\s*(.+?)\s{2,}(\S+)\s+(\S+)\s+(\S+)') {
+                        $wingetPackages += @{
+                            Name = $matches[1].Trim()
+                            Id = $matches[2].Trim()
+                            Version = $matches[3].Trim()
+                            Available = $matches[4].Trim()
+                        }
+                    }
+                }
+            }
+            
+            # Compare with cache
+            if ($wingetPackages.Count -gt 0) {
+                $changedPackages = Compare-PackageVersions -CurrentPackages $wingetPackages -Source "Winget" -CachePath $cachePath
+                
+                if ($changedPackages.Count -gt 0) {
+                    Write-Log "Found $($changedPackages.Count) new or updated Winget packages (differential mode):" -Level "Info"
+                    foreach ($pkg in $changedPackages) {
+                        $changeInfo = if ($pkg.ChangeType -eq "New") {
+                            "NEW"
+                        } else {
+                            "$($pkg.PreviousVersion) -> $($pkg.Available)"
+                        }
+                        Write-Log "  - $($pkg.Name) [$changeInfo]" -Level "Info"
+                    }
+                } else {
+                    Write-Log "No new Winget updates since last check" -Level "Success"
+                }
+                
+                # Update cache if configured
+                if ($config.DifferentialUpdates.AlwaysUpdateCache) {
+                    foreach ($pkg in $wingetPackages) {
+                        Update-PackageCache -PackageName $pkg.Id -Version $pkg.Available -Source "Winget" -CachePath $cachePath
+                    }
+                }
+            }
+        } else {
+            # Standard mode - show all output
+            $wingetOutput | ForEach-Object { Write-Log $_ -Level "Info" }
+        }
+        
         Write-Log "Winget check completed successfully" -Level "Success"
     } catch {
         Write-Log "Error checking Winget updates: $_" -Level "Error"
@@ -121,8 +193,54 @@ if (Get-Command choco -ErrorAction SilentlyContinue) {
     try {
         # Dry-run mode: Shows what WOULD be upgraded without actually upgrading
         # --whatif: Simulates the upgrade operation without making any changes
-        $chocoOutput = choco upgrade all --whatif 2>&1 | Out-String
-        Write-Log $chocoOutput -Level "Info"
+        $chocoOutput = choco outdated 2>&1
+        
+        if ($useDifferentialUpdates) {
+            # Parse chocolatey output
+            $chocoPackages = @()
+            $lines = $chocoOutput | Where-Object { $_ -match '\S' }
+            
+            foreach ($line in $lines) {
+                # Parse format: PackageName|CurrentVersion|AvailableVersion|Pinned
+                if ($line -match '^([^|]+)\|([^|]+)\|([^|]+)') {
+                    $chocoPackages += @{
+                        Name = $matches[1].Trim()
+                        Version = $matches[2].Trim()
+                        Available = $matches[3].Trim()
+                    }
+                }
+            }
+            
+            # Compare with cache
+            if ($chocoPackages.Count -gt 0) {
+                $changedPackages = Compare-PackageVersions -CurrentPackages $chocoPackages -Source "Chocolatey" -CachePath $cachePath
+                
+                if ($changedPackages.Count -gt 0) {
+                    Write-Log "Found $($changedPackages.Count) new or updated Chocolatey packages (differential mode):" -Level "Info"
+                    foreach ($pkg in $changedPackages) {
+                        $changeInfo = if ($pkg.ChangeType -eq "New") {
+                            "NEW"
+                        } else {
+                            "$($pkg.PreviousVersion) -> $($pkg.Available)"
+                        }
+                        Write-Log "  - $($pkg.Name) [$changeInfo]" -Level "Info"
+                    }
+                } else {
+                    Write-Log "No new Chocolatey updates since last check" -Level "Success"
+                }
+                
+                # Update cache if configured
+                if ($config.DifferentialUpdates.AlwaysUpdateCache) {
+                    foreach ($pkg in $chocoPackages) {
+                        Update-PackageCache -PackageName $pkg.Name -Version $pkg.Available -Source "Chocolatey" -CachePath $cachePath
+                    }
+                }
+            }
+        } else {
+            # Standard mode - show all output
+            $chocoOutput | ForEach-Object { Write-Log $_ -Level "Info" }
+        }
+        
         Write-Log "Chocolatey check completed successfully" -Level "Success"
     } catch {
         Write-Log "Error checking Chocolatey updates: $_" -Level "Error"
@@ -137,7 +255,14 @@ if (Get-Command choco -ErrorAction SilentlyContinue) {
 # ============================================================================
 Write-Log "`n" + ("=" * 70) -Level "Info"
 Write-Log "Update check completed!" -Level "Success"
-Write-Log "No packages were installed - this was a preview only." -Level "Info"
+
+if ($useDifferentialUpdates) {
+    $cacheStats = Get-CacheStatistics -CachePath $cachePath
+    Write-Log "Cache status: $($cacheStats.TotalPackages) packages cached, last updated $($cacheStats.LastUpdated)" -Level "Info"
+} else {
+    Write-Log "No packages were installed - this was a preview only." -Level "Info"
+}
+
 Write-Log ("=" * 70) -Level "Info"
 
 # Send completion notification

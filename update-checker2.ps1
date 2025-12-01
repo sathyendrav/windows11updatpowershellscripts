@@ -89,6 +89,18 @@ Write-Log "=" * 70 -Level "Info"
 # Send start notification
 Send-UpdateNotification -Type "Start" -Config $config
 
+# Initialize cache if differential updates enabled
+$useDifferentialUpdates = $config -and $config.DifferentialUpdates.EnableDifferentialUpdates
+if ($useDifferentialUpdates) {
+    Write-Log "Differential updates enabled - will compare with cached versions" -Level "Info"
+    $cachePath = if ($config.DifferentialUpdates.CachePath) { 
+        Join-Path $PSScriptRoot $config.DifferentialUpdates.CachePath.TrimStart(".\")
+    } else { 
+        "$PSScriptRoot\cache\package-cache.json" 
+    }
+    Initialize-PackageCache -CachePath $cachePath
+}
+
 # ============================================================================
 # Helper Functions
 # ============================================================================

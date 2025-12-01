@@ -63,5 +63,12 @@
     "PackageHistoryDays": 90,
     "AllowPackageDowngrade": true,
     "BackupBeforeRollback": false
+  },
+  "DifferentialUpdates": {
+    "EnableDifferentialUpdates": true,
+    "CachePath": ".\\cache\\package-cache.json",
+    "CacheExpiryHours": 24,
+    "AlwaysUpdateCache": true,
+    "ShowChangeDetails": true
   }
 }

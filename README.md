@@ -91,6 +91,16 @@ Analyze update operations from the history database:
 - 📄 **Export reports** to HTML or CSV formats
 - 📊 **Summary statistics** by source and operation type
 
+### 📦 `view-cache.ps1` (New! 🎉)
+**Package Cache Viewer**
+
+Manage and view the differential update cache:
+- 📦 **View cached packages** and versions
+- 📊 **Cache statistics** showing age and package counts
+- 🔍 **Filter by source** (Store, Winget, Chocolatey)
+- 🔄 **Compare versions** with current available packages
+- 🗑️ **Clear cache** to force full update checks
+
 ---
 
 ## ✨ Features
@@ -116,6 +126,7 @@ Analyze update operations from the history database:
 - **📧 Email Notifications** - Email alerts support (configurable via SMTP settings)
 - **⏮️ Rollback Capability** - Restore to previous restore points or rollback specific packages
 - **📊 Update History Database** - JSON-based tracking of all package operations with timestamps and status
+- **⚡ Differential Updates** - Smart caching system that only processes packages with actual version changes
 
 ---
 
@@ -518,6 +529,42 @@ param(
 
 #### Key Features
 
+- Filter by time period (last N days)
+- Filter by package source (Store/Winget/Chocolatey)
+- Search for specific packages by name
+- Show only failed operations for troubleshooting
+- Export to HTML or CSV formats
+- View summary statistics and trends
+- Identify recent failures with error details
+
+---
+
+### Option 6: `view-cache.ps1` - View Package Cache (New! 🎉)
+
+Display and manage the differential update cache.
+
+```powershell
+# View all cached packages
+.\view-cache.ps1
+
+# Show cache statistics only
+.\view-cache.ps1 -Statistics
+
+# View cached packages for specific source
+.\view-cache.ps1 -Source Winget
+
+# Search for specific package in cache
+.\view-cache.ps1 -PackageName "chrome"
+
+# Clear entire cache
+.\view-cache.ps1 -ClearCache
+
+# Clear specific source cache
+.\view-cache.ps1 -ClearCache -Source Chocolatey
+```
+
+#### Key Features
+
 - **📊 Summary Statistics**: Total operations, success/failure counts, grouped by source and operation
 - **🔍 Flexible Filtering**: By date range, source, package name, or success status
 - **📈 Detailed View**: Timestamp, package, version, source, operation, and status
@@ -597,13 +644,88 @@ windows11updatpowershellscripts/
 ├── install-updates-enhanced.ps1     # ⭐ Enhanced installer with logging
 ├── update-checker1.ps1              # Quick update scanner
 ├── update-checker2.ps1              # Advanced update reporter
+├── rollback-updates.ps1             # Rollback and restore utility
+├── view-history.ps1                 # Update history viewer
+├── view-cache.ps1                   # Package cache viewer
 ├── UpdateUtilities.psm1             # Shared module library
 ├── logs/                            # Execution logs (auto-created)
+│   └── update-history.json          # Update history database
+├── cache/                           # Package version cache (auto-created)
+│   └── package-cache.json           # Differential update cache
 ├── reports/                         # Generated reports (auto-created)
 ├── README.md                        # This file
 ├── TROUBLESHOOTING.md               # 🔧 Troubleshooting guide
 └── LICENSE                          # MIT License
 ```
+
+---
+
+## ⚡ Differential Updates
+
+**Smart Update Detection** - Only process packages with actual version changes.
+
+### How It Works
+
+The differential update system maintains a cache of package versions and compares them on each scan:
+
+1. **First Run** - All packages are scanned and versions cached
+2. **Subsequent Runs** - Only packages with version changes are reported
+3. **Cache Management** - Automatic cache updates and configurable expiry
+
+### Benefits
+
+- ⚡ **Faster Scans** - Skip packages that haven't changed
+- 📊 **Change Tracking** - See exactly what's new or updated
+- 🔄 **Smart Detection** - Automatically identifies new packages
+- 💾 **Persistent Cache** - Maintains state across multiple runs
+
+### Configuration
+
+Edit `config.json` to customize differential updates:
+
+```json
+{
+  "DifferentialUpdates": {
+    "EnableDifferentialUpdates": true,
+    "CachePath": ".\\cache\\package-cache.json",
+    "CacheExpiryHours": 24,
+    "AlwaysUpdateCache": true,
+    "ShowChangeDetails": true
+  }
+}
+```
+
+### Using Differential Updates
+
+When enabled, update checker scripts automatically use differential mode:
+
+```powershell
+# First run - caches all package versions
+.\update-checker1.ps1
+
+# Second run - shows only packages with version changes
+.\update-checker1.ps1
+# Output: "Found 3 new or updated Winget packages (differential mode)"
+```
+
+### Cache Management
+
+View and manage the cache with `view-cache.ps1`:
+
+```powershell
+# View cache statistics
+.\view-cache.ps1 -Statistics
+
+# View all cached packages
+.\view-cache.ps1
+
+# Clear cache to force full scan
+.\view-cache.ps1 -ClearCache
+```
+
+### Cache Expiry
+
+The cache automatically expires after the configured time (default: 24 hours). Expired caches are automatically refreshed on the next scan.
 
 ---
 
