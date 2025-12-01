@@ -3454,6 +3454,97 @@ function New-SecurityReport {
     }
 }
 
+# ============================================================================
+# FAQ Helper Function
+# ============================================================================
+
+function Get-FAQ {
+    <#
+    .SYNOPSIS
+        Search and display FAQ entries.
+    
+    .DESCRIPTION
+        Opens the FAQ.md file or searches for specific content.
+    
+    .PARAMETER Query
+        Search query to find relevant FAQ entries.
+    
+    .PARAMETER Open
+        Open FAQ.md in default editor.
+    
+    .EXAMPLE
+        Get-FAQ
+        Displays FAQ file path and usage information.
+    
+    .EXAMPLE
+        Get-FAQ -Open
+        Opens FAQ.md in the default editor.
+    
+    .EXAMPLE
+        Get-FAQ -Query "execution"
+        Searches FAQ content for "execution".
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Query,
+        
+        [Parameter(Mandatory = $false)]
+        [switch]$Open
+    )
+    
+    try {
+        $faqPath = Join-Path $PSScriptRoot "FAQ.md"
+        
+        if (-not (Test-Path $faqPath)) {
+            Write-Host "FAQ.md file not found at: $faqPath" -ForegroundColor Red
+            Write-Host "Please ensure FAQ.md exists in the script directory." -ForegroundColor Yellow
+            return
+        }
+        
+        if ($Open) {
+            Write-Host "Opening FAQ.md..." -ForegroundColor Cyan
+            Start-Process $faqPath
+            return
+        }
+        
+        if ($Query) {
+            Write-Host "`nSearching FAQ for: '$Query'" -ForegroundColor Cyan
+            Write-Host "=" * 70 -ForegroundColor Gray
+            
+            $content = Get-Content $faqPath
+            $matchedLines = $content | Select-String -Pattern $Query -Context 2,2
+            
+            if ($matchedLines) {
+                Write-Host "`nFound $($matchedLines.Count) match(es):`n" -ForegroundColor Green
+                foreach ($match in $matchedLines) {
+                    Write-Host "Line $($match.LineNumber):" -ForegroundColor Yellow
+                    Write-Host $match.Line -ForegroundColor White
+                    if ($match.Context.PreContext) {
+                        Write-Host "  Context: $($match.Context.PreContext -join ' ')" -ForegroundColor Gray
+                    }
+                    Write-Host ""
+                }
+            } else {
+                Write-Host "`nNo matches found for '$Query'" -ForegroundColor Yellow
+            }
+            return
+        }
+        
+        # No parameters - show info
+        Write-Host "`nFAQ Helper" -ForegroundColor Cyan
+        Write-Host "=" * 50 -ForegroundColor Gray
+        Write-Host "`nFAQ file location: $faqPath" -ForegroundColor White
+        Write-Host "`nUsage:" -ForegroundColor Yellow
+        Write-Host "  Get-FAQ -Open              # Open FAQ in editor" -ForegroundColor Cyan
+        Write-Host "  Get-FAQ -Query 'keyword'   # Search FAQ content" -ForegroundColor Cyan
+        Write-Host ""
+        
+    } catch {
+        $errorMsg = $_.Exception.Message
+        Write-Host "Error accessing FAQ: $errorMsg" -ForegroundColor Red
+    }
+}
+
 # Export module members
 Export-ModuleMember -Function @(
     'Get-UpdateConfig',
@@ -3512,5 +3603,6 @@ Export-ModuleMember -Function @(
     'Install-Chocolatey',
     'Install-PowerShellModule',
     'Install-Dependency',
-    'Invoke-DependencyInstallation'
+    'Invoke-DependencyInstallation',
+    'Get-FAQ'
 )

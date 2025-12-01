@@ -1286,6 +1286,116 @@ Covers:
 
 ---
 
+## ❓ Frequently Asked Questions (FAQ)
+
+Quick answers to the most common questions.
+
+### Installation & Setup
+
+**Q: Do I need administrator rights?**  
+A: Yes, admin rights are required for system-wide operations, restore points, and installing Chocolatey.
+
+**Q: What are the system requirements?**  
+A: Windows 10 (1809+) or Windows 11, PowerShell 5.1+, internet connection, and 10 GB free disk space.
+
+**Q: Do I need to install anything first?**  
+A: No! The **Dependency Installation** feature automatically installs Winget, Chocolatey, and required modules.
+
+### Configuration
+
+**Q: Where is the configuration file?**  
+A: `config.json` in the script directory. Edit with any text editor.
+
+**Q: How do I exclude specific packages?**  
+A: Add package IDs to `PackageExclusions` in config.json:
+```json
+"PackageExclusions": {
+  "Winget": ["Microsoft.Teams"],
+  "Chocolatey": ["googlechrome"]
+}
+```
+
+**Q: Can I disable a specific update source?**  
+A: Yes, set to `false` in `UpdateSettings`:
+```json
+"EnableMicrosoftStore": true,
+"EnableWinget": true,
+"EnableChocolatey": false
+```
+
+### Usage
+
+**Q: How do I check what was updated?**  
+A: View logs, HTML reports, or run:
+```powershell
+.\view-history.ps1
+```
+
+**Q: Can I schedule automatic updates?**  
+A: Yes! Use Windows Task Scheduler to run the script daily/weekly.
+
+**Q: How do I rollback an update?**  
+A: Use System Restore or:
+```powershell
+.\rollback.ps1 -PackageName "Git.Git" -Source "Winget"
+```
+
+### Troubleshooting
+
+**Q: I get "execution policy" errors**  
+A: Run as Administrator:
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**Q: Updates fail with "Package not found"**  
+A: Reset package sources:
+```powershell
+winget source reset --force
+```
+
+**Q: Microsoft Store updates don't work**  
+A: Sign in to Microsoft Store app, or run `wsreset.exe` to reset Store.
+
+### Features
+
+**Q: What is Differential Updates?**  
+A: Only processes packages with actual version changes, saving time by skipping unchanged packages.
+
+**Q: What is Security Validation?**  
+A: Cryptographic verification using hash checking and digital signature validation to detect tampered packages.
+
+**Q: What is Package Priority?**  
+A: Control update order using Critical/High/Normal/Low/Deferred priority levels.
+
+### Performance
+
+**Q: How can I make updates faster?**  
+A: Enable Differential Updates, reduce timeout values, exclude slow packages, and use an SSD.
+
+**Q: How long do updates take?**  
+A: 5-10 minutes for small updates (5-10 packages), 15-30 minutes for medium (20-30), 30-60+ minutes for large (50+).
+
+### 📖 Complete FAQ
+
+For comprehensive answers to 50+ questions covering installation, configuration, troubleshooting, security, corporate deployment, and advanced topics, see:
+
+**[FAQ.md](FAQ.md)**
+
+Topics include:
+- Installation & Setup (5 questions)
+- Configuration (6 questions)
+- Usage & Operations (10 questions)
+- Package Managers (5 questions)
+- Features (5 questions)
+- Troubleshooting (7 questions)
+- Performance & Optimization (3 questions)
+- Security & Safety (6 questions)
+- Advanced Topics (5 questions)
+- Corporate/Enterprise (7 questions)
+
+---
+
 ## 🔧 Troubleshooting
 
 Having issues? Check our comprehensive troubleshooting guide:
