@@ -4,7 +4,7 @@
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207.x-blue?style=for-the-badge&logo=powershell)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?style=for-the-badge&logo=windows)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)
 
 **Automate and manage Windows updates across multiple package managers**
 
@@ -714,7 +714,7 @@ windows11updatpowershellscripts/
 ├── reports/                         # Generated reports (auto-created)
 ├── README.md                        # This file
 ├── TROUBLESHOOTING.md               # 🔧 Troubleshooting guide
-└── LICENSE                          # MIT License
+└── LICENSE                          # Apache License 2.0
 ```
 
 ---
@@ -1103,26 +1103,31 @@ Contributions are welcome! Feel free to:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-### MIT License Summary
+### Apache License 2.0 Summary
 
-Permission is granted to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software, subject to the following conditions:
+You are free to use, reproduce, distribute, display, and create derivative works of this software, subject to the following conditions:
 
 ✅ **You MAY:**
 - Use these scripts for personal or commercial purposes
 - Modify and distribute modified versions
 - Include in other projects
+- Sublicense and sell copies
 
 ❌ **You MUST:**
 - Include the original copyright notice and license
-- Accept that the software is provided "AS IS" without warranty
+- State significant changes made to the files
+- Include a copy of the Apache License 2.0
+- Not use trademarks of the project without permission
 
 ⚠️ **The authors/contributors are NOT LIABLE for:**
 - Any damages or losses resulting from use
 - System failures, data loss, or security breaches
 - Compatibility issues or conflicts
 - Any claims, damages, or other liability
+
+**Patent Grant:** Contributors grant patent rights for their contributions. Patent licenses terminate if you initiate patent litigation.
 
 ---
 
