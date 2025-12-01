@@ -70,5 +70,41 @@
     "CacheExpiryHours": 24,
     "AlwaysUpdateCache": true,
     "ShowChangeDetails": true
+  },
+  "PackagePriority": {
+    "EnablePriorityOrdering": true,
+    "OrderingStrategy": "PriorityThenAlphabetical",
+    "CriticalPackages": {
+      "Winget": [
+        "Microsoft.WindowsTerminal",
+        "Microsoft.VisualStudioCode"
+      ],
+      "Chocolatey": [
+        "chocolatey",
+        "powershell-core"
+      ],
+      "Store": []
+    },
+    "HighPriorityPackages": {
+      "Winget": [
+        "Microsoft.PowerShell",
+        "Git.Git"
+      ],
+      "Chocolatey": [
+        "git",
+        "nodejs"
+      ],
+      "Store": []
+    },
+    "LowPriorityPackages": {
+      "Winget": [],
+      "Chocolatey": [],
+      "Store": []
+    },
+    "DeferredPackages": {
+      "Winget": [],
+      "Chocolatey": [],
+      "Store": []
+    }
   }
 }

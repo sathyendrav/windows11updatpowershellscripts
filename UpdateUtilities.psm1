@@ -1442,6 +1442,317 @@ function Get-CacheStatistics {
     }
 }
 
+# ============================================================================
+# Package Priority and Ordering Functions
+# ============================================================================
+
+function Get-PackagePriority {
+    <#
+    .SYNOPSIS
+        Gets the priority level of a package.
+    .DESCRIPTION
+        Returns the priority level (Critical, High, Normal, Low, Deferred) for a given package.
+    .PARAMETER PackageName
+        Name or ID of the package.
+    .PARAMETER Source
+        Package source (Store, Winget, or Chocolatey).
+    .PARAMETER Config
+        Configuration object containing priority settings.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [Parameter(Mandatory = $false)]
+        [object]$Config
+    )
+    
+    if (-not $Config) {
+        $Config = Get-UpdateConfig
+    }
+    
+    # Check if priority ordering is enabled
+    if (-not $Config.PackagePriority.EnablePriorityOrdering) {
+        return "Normal"
+    }
+    
+    # Check each priority level
+    if ($Config.PackagePriority.CriticalPackages.$Source -contains $PackageName) {
+        return "Critical"
+    }
+    
+    if ($Config.PackagePriority.HighPriorityPackages.$Source -contains $PackageName) {
+        return "High"
+    }
+    
+    if ($Config.PackagePriority.LowPriorityPackages.$Source -contains $PackageName) {
+        return "Low"
+    }
+    
+    if ($Config.PackagePriority.DeferredPackages.$Source -contains $PackageName) {
+        return "Deferred"
+    }
+    
+    return "Normal"
+}
+
+function Sort-PackagesByPriority {
+    <#
+    .SYNOPSIS
+        Sorts packages by priority level.
+    .DESCRIPTION
+        Sorts an array of packages based on configured priority levels and ordering strategy.
+    .PARAMETER Packages
+        Array of package objects with Name property.
+    .PARAMETER Source
+        Package source (Store, Winget, or Chocolatey).
+    .PARAMETER Config
+        Configuration object containing priority settings.
+    .PARAMETER Strategy
+        Ordering strategy: PriorityOnly, PriorityThenAlphabetical, or PriorityThenReverseAlphabetical.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [array]$Packages,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [Parameter(Mandatory = $false)]
+        [object]$Config,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("PriorityOnly", "PriorityThenAlphabetical", "PriorityThenReverseAlphabetical")]
+        [string]$Strategy
+    )
+    
+    if (-not $Config) {
+        $Config = Get-UpdateConfig
+    }
+    
+    if (-not $Strategy) {
+        $Strategy = $Config.PackagePriority.OrderingStrategy
+    }
+    
+    # Add priority property to each package
+    $packagesWithPriority = $Packages | ForEach-Object {
+        $pkg = $_
+        $priority = Get-PackagePriority -PackageName $pkg.Name -Source $Source -Config $Config
+        
+        # Assign numeric value for sorting
+        $priorityValue = switch ($priority) {
+            "Critical" { 1 }
+            "High"     { 2 }
+            "Normal"   { 3 }
+            "Low"      { 4 }
+            "Deferred" { 5 }
+            default    { 3 }
+        }
+        
+        $pkg | Add-Member -MemberType NoteProperty -Name "Priority" -Value $priority -Force
+        $pkg | Add-Member -MemberType NoteProperty -Name "PriorityValue" -Value $priorityValue -Force
+        $pkg
+    }
+    
+    # Sort based on strategy
+    switch ($Strategy) {
+        "PriorityOnly" {
+            $sorted = $packagesWithPriority | Sort-Object PriorityValue
+        }
+        "PriorityThenAlphabetical" {
+            $sorted = $packagesWithPriority | Sort-Object PriorityValue, Name
+        }
+        "PriorityThenReverseAlphabetical" {
+            $sorted = $packagesWithPriority | Sort-Object PriorityValue, @{Expression="Name"; Descending=$true}
+        }
+        default {
+            $sorted = $packagesWithPriority | Sort-Object PriorityValue, Name
+        }
+    }
+    
+    return $sorted
+}
+
+function Get-PrioritySummary {
+    <#
+    .SYNOPSIS
+        Gets a summary of package priorities from configuration.
+    .DESCRIPTION
+        Returns counts and lists of packages by priority level.
+    .PARAMETER Config
+        Configuration object containing priority settings.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [object]$Config
+    )
+    
+    if (-not $Config) {
+        $Config = Get-UpdateConfig
+    }
+    
+    if (-not $Config.PackagePriority) {
+        return @{
+            Enabled = $false
+            Message = "Priority ordering not configured"
+        }
+    }
+    
+    $summary = @{
+        Enabled = $Config.PackagePriority.EnablePriorityOrdering
+        Strategy = $Config.PackagePriority.OrderingStrategy
+        Critical = @{
+            Winget = @($Config.PackagePriority.CriticalPackages.Winget).Count
+            Chocolatey = @($Config.PackagePriority.CriticalPackages.Chocolatey).Count
+            Store = @($Config.PackagePriority.CriticalPackages.Store).Count
+        }
+        High = @{
+            Winget = @($Config.PackagePriority.HighPriorityPackages.Winget).Count
+            Chocolatey = @($Config.PackagePriority.HighPriorityPackages.Chocolatey).Count
+            Store = @($Config.PackagePriority.HighPriorityPackages.Store).Count
+        }
+        Low = @{
+            Winget = @($Config.PackagePriority.LowPriorityPackages.Winget).Count
+            Chocolatey = @($Config.PackagePriority.LowPriorityPackages.Chocolatey).Count
+            Store = @($Config.PackagePriority.LowPriorityPackages.Store).Count
+        }
+        Deferred = @{
+            Winget = @($Config.PackagePriority.DeferredPackages.Winget).Count
+            Chocolatey = @($Config.PackagePriority.DeferredPackages.Chocolatey).Count
+            Store = @($Config.PackagePriority.DeferredPackages.Store).Count
+        }
+    }
+    
+    return $summary
+}
+
+function Add-PackageToPriority {
+    <#
+    .SYNOPSIS
+        Adds a package to a priority level.
+    .DESCRIPTION
+        Updates config.json to add a package to the specified priority level.
+    .PARAMETER PackageName
+        Name or ID of the package.
+    .PARAMETER Source
+        Package source (Store, Winget, or Chocolatey).
+    .PARAMETER Priority
+        Priority level (Critical, High, Low, or Deferred).
+    .PARAMETER ConfigPath
+        Path to config.json file.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Critical", "High", "Low", "Deferred")]
+        [string]$Priority,
+        
+        [string]$ConfigPath = "$PSScriptRoot\config.json"
+    )
+    
+    try {
+        $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+        
+        # Determine the target array
+        $targetArray = switch ($Priority) {
+            "Critical" { $config.PackagePriority.CriticalPackages.$Source }
+            "High"     { $config.PackagePriority.HighPriorityPackages.$Source }
+            "Low"      { $config.PackagePriority.LowPriorityPackages.$Source }
+            "Deferred" { $config.PackagePriority.DeferredPackages.$Source }
+        }
+        
+        # Add package if not already present
+        if ($targetArray -notcontains $PackageName) {
+            $targetArray += $PackageName
+            
+            # Update the config object
+            switch ($Priority) {
+                "Critical" { $config.PackagePriority.CriticalPackages.$Source = $targetArray }
+                "High"     { $config.PackagePriority.HighPriorityPackages.$Source = $targetArray }
+                "Low"      { $config.PackagePriority.LowPriorityPackages.$Source = $targetArray }
+                "Deferred" { $config.PackagePriority.DeferredPackages.$Source = $targetArray }
+            }
+            
+            # Save config
+            $config | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath -Encoding UTF8
+            Write-Log "Added $PackageName to $Priority priority ($Source)" -Level "Info"
+            return $true
+        } else {
+            Write-Log "$PackageName already in $Priority priority ($Source)" -Level "Warning"
+            return $false
+        }
+    } catch {
+        Write-Log "Error adding package to priority: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Remove-PackageFromPriority {
+    <#
+    .SYNOPSIS
+        Removes a package from all priority levels.
+    .DESCRIPTION
+        Updates config.json to remove a package from priority lists.
+    .PARAMETER PackageName
+        Name or ID of the package.
+    .PARAMETER Source
+        Package source (Store, Winget, or Chocolatey).
+    .PARAMETER ConfigPath
+        Path to config.json file.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageName,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Store", "Winget", "Chocolatey")]
+        [string]$Source,
+        
+        [string]$ConfigPath = "$PSScriptRoot\config.json"
+    )
+    
+    try {
+        $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+        $removed = $false
+        
+        # Remove from all priority levels
+        $priorities = @("CriticalPackages", "HighPriorityPackages", "LowPriorityPackages", "DeferredPackages")
+        
+        foreach ($priorityLevel in $priorities) {
+            $array = @($config.PackagePriority.$priorityLevel.$Source | Where-Object { $_ -ne $PackageName })
+            
+            if ($array.Count -ne $config.PackagePriority.$priorityLevel.$Source.Count) {
+                $config.PackagePriority.$priorityLevel.$Source = $array
+                $removed = $true
+            }
+        }
+        
+        if ($removed) {
+            # Save config
+            $config | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath -Encoding UTF8
+            Write-Log "Removed $PackageName from priority lists ($Source)" -Level "Info"
+            return $true
+        } else {
+            Write-Log "$PackageName not found in priority lists ($Source)" -Level "Warning"
+            return $false
+        }
+    } catch {
+        Write-Log "Error removing package from priority: $_" -Level "Error"
+        return $false
+    }
+}
+
 # Export module members
 Export-ModuleMember -Function @(
     'Get-UpdateConfig',
@@ -1468,5 +1779,10 @@ Export-ModuleMember -Function @(
     'Update-PackageCache',
     'Compare-PackageVersions',
     'Clear-PackageCache',
-    'Get-CacheStatistics'
+    'Get-CacheStatistics',
+    'Get-PackagePriority',
+    'Sort-PackagesByPriority',
+    'Get-PrioritySummary',
+    'Add-PackageToPriority',
+    'Remove-PackageFromPriority'
 )

@@ -101,6 +101,17 @@ Manage and view the differential update cache:
 - 🔄 **Compare versions** with current available packages
 - 🗑️ **Clear cache** to force full update checks
 
+### 🎯 `manage-priorities.ps1` (New! 🎉)
+**Package Priority Manager**
+
+Interactive tool for managing update priorities:
+- 📋 **View priority configuration** across all sources
+- ➕ **Add packages** to priority levels
+- ➖ **Remove packages** from priorities
+- 📊 **View statistics** and package counts
+- 🧪 **Test ordering** with live previews
+- ⚙️ **Configure strategies** and toggle priority system
+
 ---
 
 ## ✨ Features
@@ -127,6 +138,7 @@ Manage and view the differential update cache:
 - **⏮️ Rollback Capability** - Restore to previous restore points or rollback specific packages
 - **📊 Update History Database** - JSON-based tracking of all package operations with timestamps and status
 - **⚡ Differential Updates** - Smart caching system that only processes packages with actual version changes
+- **🎯 Package Priority/Ordering** - Control update sequence with Critical, High, Normal, Low, and Deferred priority levels
 
 ---
 
@@ -573,6 +585,51 @@ Display and manage the differential update cache.
 
 ---
 
+### Option 7: `manage-priorities.ps1` - Manage Package Priorities (New! 🎉)
+
+Configure which packages update first with an interactive menu system.
+
+```powershell
+# Launch interactive priority manager
+.\manage-priorities.ps1
+```
+
+#### Interactive Menu Options
+
+1. **View Priority Configuration** - See all configured priorities
+2. **Add Package to Priority Level** - Set Critical/High/Low/Deferred priority
+3. **Remove Package from Priorities** - Reset to Normal priority
+4. **View Priority Statistics** - See counts by priority level
+5. **List Packages by Priority** - Detailed priority listings
+6. **Test Priority Ordering** - Preview sort order with test data
+7. **Enable/Disable Priority Ordering** - Toggle entire feature
+8. **Change Ordering Strategy** - Switch between PriorityOnly, Alphabetical sorting
+
+#### Example Workflow
+
+```powershell
+# Launch manager
+.\manage-priorities.ps1
+
+# From menu, select option 2 (Add Package)
+# Enter: Microsoft.PowerToys
+# Select: Winget
+# Select: Critical
+
+# Result: PowerToys now updates first among Winget packages
+```
+
+#### Key Features
+
+- **🎯 Priority Levels**: Critical, High, Normal, Low, Deferred
+- **🔄 Interactive Interface**: User-friendly menu-driven operation
+- **📊 Live Statistics**: Real-time priority distribution
+- **🧪 Test Mode**: Preview ordering before applying
+- **⚙️ Strategy Configuration**: Multiple sorting approaches
+- **✅ Safety Checks**: Confirmation prompts for destructive operations
+
+---
+
 ## 🛡️ Running Scripts Safely
 
 ### Step-by-Step Guide
@@ -647,6 +704,7 @@ windows11updatpowershellscripts/
 ├── rollback-updates.ps1             # Rollback and restore utility
 ├── view-history.ps1                 # Update history viewer
 ├── view-cache.ps1                   # Package cache viewer
+├── manage-priorities.ps1            # Package priority manager
 ├── UpdateUtilities.psm1             # Shared module library
 ├── logs/                            # Execution logs (auto-created)
 │   └── update-history.json          # Update history database
@@ -726,6 +784,122 @@ View and manage the cache with `view-cache.ps1`:
 ### Cache Expiry
 
 The cache automatically expires after the configured time (default: 24 hours). Expired caches are automatically refreshed on the next scan.
+
+---
+
+## 🎯 Package Priority and Ordering
+
+**Control Update Sequence** - Define which packages update first.
+
+### Priority Levels
+
+The system supports 5 priority levels:
+
+1. **Critical** (🔴) - Highest priority, updates first
+   - Essential system tools, security software
+   - Example: Windows Terminal, PowerShell Core
+
+2. **High** (🟡) - High priority
+   - Development tools, frequently used applications
+   - Example: Git, VS Code, Node.js
+
+3. **Normal** (⚪) - Default priority
+   - Regular applications without specific priority
+
+4. **Low** (🔵) - Low priority
+   - Non-essential applications
+   - Updates after higher priority packages
+
+5. **Deferred** (⚫) - Lowest priority, updates last
+   - Optional packages, can be skipped if time-limited
+
+### Ordering Strategies
+
+Configure how packages are sorted within priority levels:
+
+- **PriorityOnly** - Sort by priority level only
+- **PriorityThenAlphabetical** - Priority first, then A-Z (default)
+- **PriorityThenReverseAlphabetical** - Priority first, then Z-A
+
+### Configuration
+
+Edit `config.json` to set up priorities:
+
+```json
+{
+  "PackagePriority": {
+    "EnablePriorityOrdering": true,
+    "OrderingStrategy": "PriorityThenAlphabetical",
+    "CriticalPackages": {
+      "Winget": ["Microsoft.WindowsTerminal", "Microsoft.PowerShell"],
+      "Chocolatey": ["chocolatey", "powershell-core"],
+      "Store": []
+    },
+    "HighPriorityPackages": {
+      "Winget": ["Git.Git", "Microsoft.VisualStudioCode"],
+      "Chocolatey": ["git", "nodejs"],
+      "Store": []
+    },
+    "LowPriorityPackages": {
+      "Winget": [],
+      "Chocolatey": [],
+      "Store": []
+    },
+    "DeferredPackages": {
+      "Winget": [],
+      "Chocolatey": [],
+      "Store": []
+    }
+  }
+}
+```
+
+### Using Priority Manager
+
+Manage priorities interactively with `manage-priorities.ps1`:
+
+```powershell
+# Launch interactive menu
+.\manage-priorities.ps1
+
+# Menu options:
+# 1. View Priority Configuration
+# 2. Add Package to Priority Level
+# 3. Remove Package from Priorities
+# 4. View Priority Statistics
+# 5. List Packages by Priority
+# 6. Test Priority Ordering
+# 7. Enable/Disable Priority Ordering
+# 8. Change Ordering Strategy
+```
+
+### Using Priority Functions
+
+Programmatically manage priorities:
+
+```powershell
+# Get package priority
+Get-PackagePriority -PackageName "Git.Git" -Source "Winget"
+# Output: High
+
+# Add package to priority level
+Add-PackageToPriority -PackageName "MyApp" -Source "Winget" -Priority "Critical"
+
+# Remove package from priorities
+Remove-PackageFromPriority -PackageName "MyApp" -Source "Winget"
+
+# Get priority summary
+$summary = Get-PrioritySummary
+Write-Host "Critical packages: $($summary.Critical.Winget)"
+```
+
+### Benefits
+
+- 🔒 **Critical First** - Ensure essential tools update before others
+- ⚡ **Faster Completion** - High-priority packages complete quickly
+- 🎮 **Resource Management** - Defer low-priority updates during peak hours
+- 📊 **Predictable Order** - Consistent, reproducible update sequences
+- ⏱️ **Time Control** - Skip deferred packages when time-limited
 
 ---
 
