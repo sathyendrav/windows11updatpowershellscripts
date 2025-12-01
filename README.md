@@ -141,6 +141,7 @@ Interactive tool for managing update priorities:
 - **🎯 Package Priority/Ordering** - Control update sequence with Critical, High, Normal, Low, and Deferred priority levels
 - **✅ Update Validation** - Verify updates succeeded with version checks, health validation, and detailed reporting
 - **🔐 Security Validation** - Hash verification and digital signature validation for package integrity and authenticity
+- **📦 Dependency Installation** - Automatic detection and installation of required dependencies (Winget, Chocolatey, PowerShell modules)
 
 ---
 
@@ -1191,6 +1192,97 @@ Reports include:
 6. **Review Reports** - Regularly audit security validation reports for anomalies
 7. **Block Untrusted** - Consider setting `BlockUntrustedPackages: true` in production
 8. **Backup Hash Database** - Keep backups of `package-hashes.json` for audit trails
+
+---
+
+## 📦 Dependency Installation
+
+The dependency installation system automatically detects and installs required package managers (Winget, Chocolatey) and PowerShell modules before running updates.
+
+### Features
+
+- **🔍 Automatic Detection** - Checks if dependencies are installed with version verification
+- **📥 Auto-Installation** - Installs missing dependencies automatically
+- **⚙️ Multiple Methods** - Microsoft Store, GitHub, or web installation
+- **✅ Validation** - Confirms successful installation after each dependency
+- **🔄 Configurable** - Control required dependencies and failure handling
+
+### Configuration
+
+```json
+{
+  "DependencyInstallation": {
+    "EnableDependencyCheck": true,
+    "AutoInstallMissingDependencies": true,
+    "RequiredDependencies": {
+      "Winget": true,
+      "Chocolatey": false,
+      "PowerShellModules": []
+    },
+    "MinimumVersions": {
+      "Winget": "1.6.0",
+      "Chocolatey": "2.0.0",
+      "PowerShell": "5.1"
+    },
+    "InstallationMethods": {
+      "Winget": "MicrosoftStore",
+      "Chocolatey": "WebInstall",
+      "PowerShellModules": "PSGallery"
+    },
+    "FailOnMissingDependencies": false,
+    "InstallationTimeout": 300
+  }
+}
+```
+
+### Key Options
+
+- **EnableDependencyCheck** - Enable automatic dependency checking
+- **AutoInstallMissingDependencies** - Auto-install missing dependencies
+- **RequiredDependencies** - Specify which dependencies are required
+- **MinimumVersions** - Set minimum version requirements
+- **FailOnMissingDependencies** - Stop if dependencies are missing
+- **InstallationTimeout** - Maximum time for installation (seconds)
+
+### Using Dependency Functions
+
+```powershell
+# Check if Winget is installed
+Test-WingetInstalled
+
+# Get Winget version
+Get-WingetVersion
+
+# Install Winget
+Install-WingetCLI -Method "MicrosoftStore" -TimeoutSeconds 300
+
+# Check PowerShell module
+Test-PowerShellModule -ModuleName "Pester" -MinimumVersion "5.0.0"
+
+# Install PowerShell module
+Install-PowerShellModule -ModuleName "Pester" -Scope "CurrentUser"
+
+# Run complete dependency check
+$result = Invoke-DependencyInstallation
+if ($result.Success) {
+    Write-Host "Dependencies: $($result.Dependencies.Count) checked"
+}
+```
+
+### 📖 Complete Documentation
+
+For detailed documentation including all functions, scenarios, and troubleshooting, see:
+
+**[DEPENDENCY-DOCS.md](DEPENDENCY-DOCS.md)**
+
+Covers:
+- Installation methods for Winget (Microsoft Store, GitHub)
+- Chocolatey installation
+- PowerShell module management
+- Version checking and validation
+- Common scenarios (fresh install, corporate, manual)
+- Troubleshooting guide
+- Complete function reference
 
 ---
 

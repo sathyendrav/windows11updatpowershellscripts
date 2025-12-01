@@ -155,5 +155,29 @@
     "AllowSelfSignedCertificates": false,
     "CheckCertificateRevocation": true,
     "TrustedCertificateThumbprints": []
+  },
+  "DependencyInstallation": {
+    "EnableDependencyCheck": true,
+    "AutoInstallMissingDependencies": true,
+    "RequiredDependencies": {
+      "Winget": true,
+      "Chocolatey": false,
+      "PowerShellModules": []
+    },
+    "MinimumVersions": {
+      "Winget": "1.6.0",
+      "Chocolatey": "2.0.0",
+      "PowerShell": "5.1"
+    },
+    "InstallationMethods": {
+      "Winget": "MicrosoftStore",
+      "Chocolatey": "WebInstall",
+      "PowerShellModules": "PSGallery"
+    },
+    "SkipDependencyCheck": false,
+    "FailOnMissingDependencies": false,
+    "InstallationTimeout": 300,
+    "ValidateAfterInstallation": true,
+    "LogDependencyStatus": true
   }
 }

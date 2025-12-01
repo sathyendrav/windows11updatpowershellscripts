@@ -2152,6 +2152,688 @@ function New-ValidationReport {
 }
 
 # ============================================================================
+# Dependency Installation Functions
+# ============================================================================
+
+function Test-WingetInstalled {
+    <#
+    .SYNOPSIS
+        Checks if Windows Package Manager (Winget) is installed.
+    #>
+    try {
+        $wingetPath = Get-Command winget -ErrorAction SilentlyContinue
+        if ($wingetPath) {
+            Write-Log "Winget is installed at: $($wingetPath.Source)" -Level "Info"
+            return $true
+        } else {
+            Write-Log "Winget is not installed" -Level "Warning"
+            return $false
+        }
+    } catch {
+        Write-Log "Error checking Winget installation: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Test-ChocolateyInstalled {
+    <#
+    .SYNOPSIS
+        Checks if Chocolatey package manager is installed.
+    #>
+    try {
+        $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
+        if ($chocoPath) {
+            Write-Log "Chocolatey is installed at: $($chocoPath.Source)" -Level "Info"
+            return $true
+        } else {
+            Write-Log "Chocolatey is not installed" -Level "Warning"
+            return $false
+        }
+    } catch {
+        Write-Log "Error checking Chocolatey installation: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Test-PowerShellModule {
+    <#
+    .SYNOPSIS
+        Checks if a PowerShell module is installed.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ModuleName,
+        
+        [Parameter(Mandatory = $false)]
+        [version]$MinimumVersion
+    )
+    
+    try {
+        $module = Get-Module -ListAvailable -Name $ModuleName | Sort-Object Version -Descending | Select-Object -First 1
+        
+        if ($module) {
+            if ($MinimumVersion) {
+                if ($module.Version -ge $MinimumVersion) {
+                    Write-Log "Module '$ModuleName' version $($module.Version) is installed (minimum: $MinimumVersion)" -Level "Info"
+                    return $true
+                } else {
+                    Write-Log "Module '$ModuleName' version $($module.Version) is below minimum required version $MinimumVersion" -Level "Warning"
+                    return $false
+                }
+            } else {
+                Write-Log "Module '$ModuleName' version $($module.Version) is installed" -Level "Info"
+                return $true
+            }
+        } else {
+            Write-Log "Module '$ModuleName' is not installed" -Level "Warning"
+            return $false
+        }
+    } catch {
+        Write-Log "Error checking module '$ModuleName': $_" -Level "Error"
+        return $false
+    }
+}
+
+function Get-WingetVersion {
+    <#
+    .SYNOPSIS
+        Gets the installed version of Winget.
+    #>
+    try {
+        if (-not (Test-WingetInstalled)) {
+            return $null
+        }
+        
+        $versionOutput = winget --version 2>&1
+        if ($versionOutput -match 'v?(\d+\.\d+\.\d+)') {
+            $version = [version]$matches[1]
+            Write-Log "Winget version: $version" -Level "Info"
+            return $version
+        } else {
+            Write-Log "Could not parse Winget version from output: $versionOutput" -Level "Warning"
+            return $null
+        }
+    } catch {
+        Write-Log "Error getting Winget version: $_" -Level "Error"
+        return $null
+    }
+}
+
+function Get-ChocolateyVersion {
+    <#
+    .SYNOPSIS
+        Gets the installed version of Chocolatey.
+    #>
+    try {
+        if (-not (Test-ChocolateyInstalled)) {
+            return $null
+        }
+        
+        $versionOutput = choco --version 2>&1
+        if ($versionOutput -match '(\d+\.\d+\.\d+)') {
+            $version = [version]$matches[1]
+            Write-Log "Chocolatey version: $version" -Level "Info"
+            return $version
+        } else {
+            Write-Log "Could not parse Chocolatey version from output: $versionOutput" -Level "Warning"
+            return $null
+        }
+    } catch {
+        Write-Log "Error getting Chocolatey version: $_" -Level "Error"
+        return $null
+    }
+}
+
+function Test-DependencyVersion {
+    <#
+    .SYNOPSIS
+        Checks if a dependency meets minimum version requirements.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Winget", "Chocolatey", "PowerShell")]
+        [string]$Dependency,
+        
+        [Parameter(Mandatory = $true)]
+        [version]$MinimumVersion
+    )
+    
+    try {
+        $currentVersion = $null
+        
+        switch ($Dependency) {
+            "Winget" {
+                $currentVersion = Get-WingetVersion
+            }
+            "Chocolatey" {
+                $currentVersion = Get-ChocolateyVersion
+            }
+            "PowerShell" {
+                $currentVersion = $PSVersionTable.PSVersion
+            }
+        }
+        
+        if ($null -eq $currentVersion) {
+            Write-Log "$Dependency is not installed or version could not be determined" -Level "Warning"
+            return $false
+        }
+        
+        if ($currentVersion -ge $MinimumVersion) {
+            Write-Log "$Dependency version $currentVersion meets minimum requirement $MinimumVersion" -Level "Info"
+            return $true
+        } else {
+            Write-Log "$Dependency version $currentVersion is below minimum requirement $MinimumVersion" -Level "Warning"
+            return $false
+        }
+    } catch {
+        Write-Log "Error checking $Dependency version: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Install-WingetCLI {
+    <#
+    .SYNOPSIS
+        Installs Windows Package Manager (Winget) via Microsoft Store or GitHub.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("MicrosoftStore", "GitHub")]
+        [string]$Method = "MicrosoftStore",
+        
+        [Parameter(Mandatory = $false)]
+        [int]$TimeoutSeconds = 300
+    )
+    
+    try {
+        Write-Log "Installing Winget using method: $Method" -Level "Info"
+        
+        if ($Method -eq "MicrosoftStore") {
+            # Install via Microsoft Store (App Installer package)
+            Write-Log "Installing App Installer (Winget) from Microsoft Store..." -Level "Info"
+            
+            # Check if running Windows 10/11
+            $osVersion = [System.Environment]::OSVersion.Version
+            if ($osVersion.Major -lt 10) {
+                Write-Log "Winget requires Windows 10 or later" -Level "Error"
+                return $false
+            }
+            
+            # Try to install via winget itself (if partially working) or use Add-AppxPackage
+            $appInstallerUrl = "https://aka.ms/getwinget"
+            Write-Log "Attempting to trigger Winget installation from Microsoft Store..." -Level "Info"
+            Start-Process "ms-windows-store://pdp/?productid=9nblggh4nns1" -ErrorAction SilentlyContinue
+            
+            # Wait for installation
+            $timeout = [DateTime]::Now.AddSeconds($TimeoutSeconds)
+            $installed = $false
+            
+            while ([DateTime]::Now -lt $timeout -and -not $installed) {
+                Start-Sleep -Seconds 10
+                if (Test-WingetInstalled) {
+                    $installed = $true
+                    Write-Log "Winget installation detected" -Level "Success"
+                    break
+                }
+            }
+            
+            if (-not $installed) {
+                Write-Log "Winget installation timed out. Please install manually from Microsoft Store" -Level "Warning"
+                return $false
+            }
+            
+            return $true
+            
+        } elseif ($Method -eq "GitHub") {
+            # Install from GitHub releases
+            Write-Log "Installing Winget from GitHub releases..." -Level "Info"
+            
+            $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/microsoft/winget-cli/releases/latest" -ErrorAction Stop
+            $msixBundle = $latestRelease.assets | Where-Object { $_.name -like "*.msixbundle" } | Select-Object -First 1
+            
+            if (-not $msixBundle) {
+                Write-Log "Could not find Winget msixbundle in GitHub releases" -Level "Error"
+                return $false
+            }
+            
+            $downloadPath = "$env:TEMP\Microsoft.DesktopAppInstaller.msixbundle"
+            Write-Log "Downloading Winget from: $($msixBundle.browser_download_url)" -Level "Info"
+            
+            Invoke-WebRequest -Uri $msixBundle.browser_download_url -OutFile $downloadPath -ErrorAction Stop
+            
+            Write-Log "Installing Winget package..." -Level "Info"
+            Add-AppxPackage -Path $downloadPath -ErrorAction Stop
+            
+            # Verify installation
+            Start-Sleep -Seconds 5
+            if (Test-WingetInstalled) {
+                Write-Log "Winget installed successfully from GitHub" -Level "Success"
+                Remove-Item $downloadPath -Force -ErrorAction SilentlyContinue
+                return $true
+            } else {
+                Write-Log "Winget installation failed verification" -Level "Error"
+                return $false
+            }
+        }
+    } catch {
+        Write-Log "Error installing Winget: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Install-Chocolatey {
+    <#
+    .SYNOPSIS
+        Installs Chocolatey package manager.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [int]$TimeoutSeconds = 300
+    )
+    
+    try {
+        Write-Log "Installing Chocolatey package manager..." -Level "Info"
+        
+        # Check if already installed
+        if (Test-ChocolateyInstalled) {
+            Write-Log "Chocolatey is already installed" -Level "Info"
+            return $true
+        }
+        
+        # Set execution policy for the installation
+        Set-ExecutionPolicy Bypass -Scope Process -Force -ErrorAction SilentlyContinue
+        
+        # Download and install Chocolatey
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        
+        $installScript = Invoke-WebRequest -Uri "https://community.chocolatey.org/install.ps1" -UseBasicParsing -ErrorAction Stop
+        
+        Write-Log "Executing Chocolatey installation script..." -Level "Info"
+        Invoke-Expression $installScript.Content
+        
+        # Refresh environment variables
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        
+        # Verify installation
+        Start-Sleep -Seconds 5
+        if (Test-ChocolateyInstalled) {
+            Write-Log "Chocolatey installed successfully" -Level "Success"
+            
+            # Configure Chocolatey
+            choco feature enable -n allowGlobalConfirmation 2>&1 | Out-Null
+            
+            return $true
+        } else {
+            Write-Log "Chocolatey installation failed verification" -Level "Error"
+            return $false
+        }
+    } catch {
+        Write-Log "Error installing Chocolatey: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Install-PowerShellModule {
+    <#
+    .SYNOPSIS
+        Installs a PowerShell module from PSGallery.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ModuleName,
+        
+        [Parameter(Mandatory = $false)]
+        [version]$MinimumVersion,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("CurrentUser", "AllUsers")]
+        [string]$Scope = "CurrentUser",
+        
+        [Parameter(Mandatory = $false)]
+        [int]$TimeoutSeconds = 300
+    )
+    
+    try {
+        Write-Log "Installing PowerShell module: $ModuleName" -Level "Info"
+        
+        # Check if already installed
+        if (Test-PowerShellModule -ModuleName $ModuleName -MinimumVersion $MinimumVersion) {
+            Write-Log "Module '$ModuleName' is already installed with required version" -Level "Info"
+            return $true
+        }
+        
+        # Install NuGet provider if needed
+        $nugetProvider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
+        if (-not $nugetProvider) {
+            Write-Log "Installing NuGet package provider..." -Level "Info"
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope $Scope -ErrorAction Stop | Out-Null
+        }
+        
+        # Set PSGallery as trusted
+        if ((Get-PSRepository -Name PSGallery).InstallationPolicy -ne 'Trusted') {
+            Write-Log "Setting PSGallery as trusted repository..." -Level "Info"
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
+        }
+        
+        # Install the module
+        Write-Log "Installing module '$ModuleName' from PSGallery..." -Level "Info"
+        if ($MinimumVersion) {
+            Install-Module -Name $ModuleName -MinimumVersion $MinimumVersion -Scope $Scope -Force -AllowClobber -ErrorAction Stop
+        } else {
+            Install-Module -Name $ModuleName -Scope $Scope -Force -AllowClobber -ErrorAction Stop
+        }
+        
+        # Verify installation
+        Start-Sleep -Seconds 2
+        if (Test-PowerShellModule -ModuleName $ModuleName -MinimumVersion $MinimumVersion) {
+            Write-Log "Module '$ModuleName' installed successfully" -Level "Success"
+            return $true
+        } else {
+            Write-Log "Module '$ModuleName' installation failed verification" -Level "Error"
+            return $false
+        }
+    } catch {
+        Write-Log "Error installing module '$ModuleName': $_" -Level "Error"
+        return $false
+    }
+}
+
+function Install-Dependency {
+    <#
+    .SYNOPSIS
+        Installs a specific dependency (Winget, Chocolatey, or PowerShell module).
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Winget", "Chocolatey", "PowerShellModule")]
+        [string]$DependencyType,
+        
+        [Parameter(Mandatory = $false)]
+        [string]$ModuleName,
+        
+        [Parameter(Mandatory = $false)]
+        [version]$MinimumVersion,
+        
+        [Parameter(Mandatory = $false)]
+        [hashtable]$InstallationOptions = @{}
+    )
+    
+    try {
+        Write-Log "Installing dependency: $DependencyType" -Level "Info"
+        
+        $result = $false
+        
+        switch ($DependencyType) {
+            "Winget" {
+                $method = if ($InstallationOptions.Method) { $InstallationOptions.Method } else { "MicrosoftStore" }
+                $timeout = if ($InstallationOptions.Timeout) { $InstallationOptions.Timeout } else { 300 }
+                $result = Install-WingetCLI -Method $method -TimeoutSeconds $timeout
+            }
+            "Chocolatey" {
+                $timeout = if ($InstallationOptions.Timeout) { $InstallationOptions.Timeout } else { 300 }
+                $result = Install-Chocolatey -TimeoutSeconds $timeout
+            }
+            "PowerShellModule" {
+                if (-not $ModuleName) {
+                    Write-Log "ModuleName is required for PowerShellModule dependency type" -Level "Error"
+                    return $false
+                }
+                
+                $scope = if ($InstallationOptions.Scope) { $InstallationOptions.Scope } else { "CurrentUser" }
+                $timeout = if ($InstallationOptions.Timeout) { $InstallationOptions.Timeout } else { 300 }
+                
+                $result = Install-PowerShellModule -ModuleName $ModuleName -MinimumVersion $MinimumVersion -Scope $scope -TimeoutSeconds $timeout
+            }
+        }
+        
+        return $result
+    } catch {
+        Write-Log "Error in Install-Dependency: $_" -Level "Error"
+        return $false
+    }
+}
+
+function Invoke-DependencyInstallation {
+    <#
+    .SYNOPSIS
+        Checks and installs all required dependencies based on configuration.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [hashtable]$Config
+    )
+    
+    try {
+        if (-not $Config) {
+            $Config = Get-UpdateConfig
+        }
+        
+        $depConfig = $Config.DependencyInstallation
+        
+        if (-not $depConfig.EnableDependencyCheck) {
+            Write-Log "Dependency check is disabled in configuration" -Level "Info"
+            return @{
+                Success = $true
+                Message = "Dependency check disabled"
+                Dependencies = @()
+            }
+        }
+        
+        if ($depConfig.SkipDependencyCheck) {
+            Write-Log "Skipping dependency check as configured" -Level "Info"
+            return @{
+                Success = $true
+                Message = "Dependency check skipped"
+                Dependencies = @()
+            }
+        }
+        
+        Write-Log "Starting dependency installation check..." -Level "Info"
+        
+        $results = @()
+        $allSuccess = $true
+        
+        # Check Winget
+        if ($depConfig.RequiredDependencies.Winget -or $Config.UpdateSettings.EnableWinget) {
+            Write-Log "Checking Winget dependency..." -Level "Info"
+            
+            $wingetInstalled = Test-WingetInstalled
+            $wingetVersionOk = $false
+            
+            if ($wingetInstalled) {
+                $minVersion = [version]$depConfig.MinimumVersions.Winget
+                $wingetVersionOk = Test-DependencyVersion -Dependency "Winget" -MinimumVersion $minVersion
+            }
+            
+            if (-not $wingetInstalled -or -not $wingetVersionOk) {
+                if ($depConfig.AutoInstallMissingDependencies) {
+                    Write-Log "Installing Winget..." -Level "Info"
+                    $method = $depConfig.InstallationMethods.Winget
+                    $timeout = $depConfig.InstallationTimeout
+                    $installResult = Install-WingetCLI -Method $method -TimeoutSeconds $timeout
+                    
+                    if ($installResult -and $depConfig.ValidateAfterInstallation) {
+                        $wingetInstalled = Test-WingetInstalled
+                        $minVersion = [version]$depConfig.MinimumVersions.Winget
+                        $wingetVersionOk = Test-DependencyVersion -Dependency "Winget" -MinimumVersion $minVersion
+                    }
+                    
+                    $results += @{
+                        Dependency = "Winget"
+                        Required = $true
+                        Installed = $wingetInstalled
+                        VersionOk = $wingetVersionOk
+                        Action = "Installed"
+                        Success = $installResult
+                    }
+                    
+                    if (-not $installResult) {
+                        $allSuccess = $false
+                    }
+                } else {
+                    $results += @{
+                        Dependency = "Winget"
+                        Required = $true
+                        Installed = $wingetInstalled
+                        VersionOk = $wingetVersionOk
+                        Action = "NotInstalled"
+                        Success = $false
+                    }
+                    $allSuccess = $false
+                }
+            } else {
+                $results += @{
+                    Dependency = "Winget"
+                    Required = $true
+                    Installed = $true
+                    VersionOk = $true
+                    Action = "AlreadyInstalled"
+                    Success = $true
+                }
+            }
+        }
+        
+        # Check Chocolatey
+        if ($depConfig.RequiredDependencies.Chocolatey -or $Config.UpdateSettings.EnableChocolatey) {
+            Write-Log "Checking Chocolatey dependency..." -Level "Info"
+            
+            $chocoInstalled = Test-ChocolateyInstalled
+            $chocoVersionOk = $false
+            
+            if ($chocoInstalled) {
+                $minVersion = [version]$depConfig.MinimumVersions.Chocolatey
+                $chocoVersionOk = Test-DependencyVersion -Dependency "Chocolatey" -MinimumVersion $minVersion
+            }
+            
+            if (-not $chocoInstalled -or -not $chocoVersionOk) {
+                if ($depConfig.AutoInstallMissingDependencies) {
+                    Write-Log "Installing Chocolatey..." -Level "Info"
+                    $timeout = $depConfig.InstallationTimeout
+                    $installResult = Install-Chocolatey -TimeoutSeconds $timeout
+                    
+                    if ($installResult -and $depConfig.ValidateAfterInstallation) {
+                        $chocoInstalled = Test-ChocolateyInstalled
+                        $minVersion = [version]$depConfig.MinimumVersions.Chocolatey
+                        $chocoVersionOk = Test-DependencyVersion -Dependency "Chocolatey" -MinimumVersion $minVersion
+                    }
+                    
+                    $results += @{
+                        Dependency = "Chocolatey"
+                        Required = $true
+                        Installed = $chocoInstalled
+                        VersionOk = $chocoVersionOk
+                        Action = "Installed"
+                        Success = $installResult
+                    }
+                    
+                    if (-not $installResult) {
+                        $allSuccess = $false
+                    }
+                } else {
+                    $results += @{
+                        Dependency = "Chocolatey"
+                        Required = $true
+                        Installed = $chocoInstalled
+                        VersionOk = $chocoVersionOk
+                        Action = "NotInstalled"
+                        Success = $false
+                    }
+                    $allSuccess = $false
+                }
+            } else {
+                $results += @{
+                    Dependency = "Chocolatey"
+                    Required = $true
+                    Installed = $true
+                    VersionOk = $true
+                    Action = "AlreadyInstalled"
+                    Success = $true
+                }
+            }
+        }
+        
+        # Check PowerShell modules
+        if ($depConfig.RequiredDependencies.PowerShellModules -and $depConfig.RequiredDependencies.PowerShellModules.Count -gt 0) {
+            foreach ($moduleName in $depConfig.RequiredDependencies.PowerShellModules) {
+                Write-Log "Checking PowerShell module: $moduleName" -Level "Info"
+                
+                $moduleInstalled = Test-PowerShellModule -ModuleName $moduleName
+                
+                if (-not $moduleInstalled) {
+                    if ($depConfig.AutoInstallMissingDependencies) {
+                        Write-Log "Installing PowerShell module: $moduleName" -Level "Info"
+                        $scope = $depConfig.InstallationMethods.PowerShellModules
+                        $timeout = $depConfig.InstallationTimeout
+                        
+                        $installResult = Install-PowerShellModule -ModuleName $moduleName -Scope $scope -TimeoutSeconds $timeout
+                        
+                        $results += @{
+                            Dependency = "Module:$moduleName"
+                            Required = $true
+                            Installed = $installResult
+                            VersionOk = $installResult
+                            Action = "Installed"
+                            Success = $installResult
+                        }
+                        
+                        if (-not $installResult) {
+                            $allSuccess = $false
+                        }
+                    } else {
+                        $results += @{
+                            Dependency = "Module:$moduleName"
+                            Required = $true
+                            Installed = $false
+                            VersionOk = $false
+                            Action = "NotInstalled"
+                            Success = $false
+                        }
+                        $allSuccess = $false
+                    }
+                } else {
+                    $results += @{
+                        Dependency = "Module:$moduleName"
+                        Required = $true
+                        Installed = $true
+                        VersionOk = $true
+                        Action = "AlreadyInstalled"
+                        Success = $true
+                    }
+                }
+            }
+        }
+        
+        # Log summary
+        $installedCount = ($results | Where-Object { $_.Installed }).Count
+        $totalCount = $results.Count
+        
+        Write-Log "Dependency check complete: $installedCount/$totalCount dependencies satisfied" -Level "Info"
+        
+        if (-not $allSuccess -and $depConfig.FailOnMissingDependencies) {
+            Write-Log "Some required dependencies are missing and FailOnMissingDependencies is enabled" -Level "Error"
+            return @{
+                Success = $false
+                Message = "Required dependencies missing"
+                Dependencies = $results
+            }
+        }
+        
+        return @{
+            Success = $allSuccess
+            Message = "Dependency check completed"
+            Dependencies = $results
+        }
+    } catch {
+        Write-Log "Error in Invoke-DependencyInstallation: $_" -Level "Error"
+        return @{
+            Success = $false
+            Message = "Error during dependency installation: $_"
+            Dependencies = @()
+        }
+    }
+}
+
+# ============================================================================
 # Security Validation Functions
 # ============================================================================
 
@@ -2819,5 +3501,16 @@ Export-ModuleMember -Function @(
     'Get-PackageHash',
     'Test-PackageIntegrity',
     'Invoke-SecurityValidation',
-    'New-SecurityReport'
+    'New-SecurityReport',
+    'Test-WingetInstalled',
+    'Test-ChocolateyInstalled',
+    'Test-PowerShellModule',
+    'Get-WingetVersion',
+    'Get-ChocolateyVersion',
+    'Test-DependencyVersion',
+    'Install-WingetCLI',
+    'Install-Chocolatey',
+    'Install-PowerShellModule',
+    'Install-Dependency',
+    'Invoke-DependencyInstallation'
 )

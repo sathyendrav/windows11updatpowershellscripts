@@ -99,6 +99,56 @@ Write-Log "=" * 70 -Level "Info"
 Write-Log "Windows Update Helper - Enhanced Automated Installer" -Level "Info"
 Write-Log "=" * 70 -Level "Info"
 
+# ============================================================================
+# Dependency Installation
+# ============================================================================
+
+Write-Log "DEPENDENCY INSTALLATION" -Level "Info"
+Write-Log "=" * 70 -Level "Info"
+
+if ($config.DependencyInstallation -and $config.DependencyInstallation.EnableDependencyCheck) {
+    Write-Log "Checking and installing required dependencies..." -Level "Info"
+    
+    $dependencyResult = Invoke-DependencyInstallation -Config $config
+    
+    if ($dependencyResult.Success) {
+        $installedCount = ($dependencyResult.Dependencies | Where-Object { $_.Installed }).Count
+        $totalCount = $dependencyResult.Dependencies.Count
+        
+        Write-Log "Dependencies satisfied: $installedCount/$totalCount" -Level "Success"
+        
+        # Log details
+        foreach ($dep in $dependencyResult.Dependencies) {
+            $statusIcon = if ($dep.Success) { "✓" } else { "✗" }
+            $message = "$statusIcon $($dep.Dependency): $($dep.Action)"
+            
+            if ($dep.Success) {
+                Write-Log $message -Level "Success"
+            } else {
+                Write-Log $message -Level "Warning"
+            }
+        }
+    } else {
+        Write-Log "Dependency check failed: $($dependencyResult.Message)" -Level "Warning"
+        
+        if ($config.DependencyInstallation.FailOnMissingDependencies) {
+            Write-Log "FailOnMissingDependencies is enabled. Stopping execution." -Level "Error"
+            
+            # Log failed dependencies
+            foreach ($dep in $dependencyResult.Dependencies | Where-Object { -not $_.Success }) {
+                Write-Log "Missing: $($dep.Dependency)" -Level "Error"
+            }
+            
+            Stop-Logging
+            exit 1
+        }
+    }
+} else {
+    Write-Log "Dependency check is disabled" -Level "Info"
+}
+
+Write-Log "" -Level "Info"
+
 # Send start notification
 Send-UpdateNotification -Type "Start" -Config $config
 
