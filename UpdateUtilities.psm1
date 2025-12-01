@@ -352,6 +352,151 @@ function ConvertTo-HtmlReport {
     return $html
 }
 
+# ============================================================================
+# Notification Functions
+# ============================================================================
+
+function Send-ToastNotification {
+    <#
+    .SYNOPSIS
+        Sends a Windows toast notification.
+    .DESCRIPTION
+        Creates and displays a native Windows 10/11 toast notification using
+        the Windows.UI.Notifications API.
+    .PARAMETER Title
+        The title/heading of the notification.
+    .PARAMETER Message
+        The main message body of the notification.
+    .PARAMETER AppId
+        The application identifier (default: Windows PowerShell).
+    .PARAMETER Icon
+        The type of icon to display: Info, Success, Warning, Error.
+    .EXAMPLE
+        Send-ToastNotification -Title "Updates Available" -Message "5 packages can be updated" -Icon Info
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+        
+        [string]$AppId = "Windows.PowerShell.UpdateHelper",
+        
+        [ValidateSet("Info", "Success", "Warning", "Error")]
+        [string]$Icon = "Info"
+    )
+    
+    try {
+        # Load required Windows Runtime assemblies
+        [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+        [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+        [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
+        
+        # Map icon types to scenario strings
+        $scenarioMap = @{
+            "Info"    = "reminder"
+            "Success" = "reminder"
+            "Warning" = "alarm"
+            "Error"   = "alarm"
+        }
+        $scenario = $scenarioMap[$Icon]
+        
+        # Create toast XML template
+        $toastXml = @"
+<toast scenario="$scenario">
+    <visual>
+        <binding template="ToastGeneric">
+            <text>$([System.Security.SecurityElement]::Escape($Title))</text>
+            <text>$([System.Security.SecurityElement]::Escape($Message))</text>
+        </binding>
+    </visual>
+    <audio src="ms-winsoundevent:Notification.Default" />
+</toast>
+"@
+        
+        # Create XML document
+        $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+        $xml.LoadXml($toastXml)
+        
+        # Create and show toast notification
+        $toast = New-Object Windows.UI.Notifications.ToastNotification($xml)
+        $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($AppId)
+        $notifier.Show($toast)
+        
+        return $true
+    } catch {
+        Write-Warning "Failed to send toast notification: $_"
+        return $false
+    }
+}
+
+function Send-UpdateNotification {
+    <#
+    .SYNOPSIS
+        Sends update-specific notifications based on configuration.
+    .DESCRIPTION
+        Helper function that checks notification settings and sends appropriate
+        toast notifications for update operations.
+    .PARAMETER Type
+        The type of notification: Start, Complete, Error, UpdatesFound, NoUpdates.
+    .PARAMETER Details
+        Additional details to include in the notification message.
+    .PARAMETER Config
+        Configuration object containing notification settings.
+    .EXAMPLE
+        Send-UpdateNotification -Type "Complete" -Details "15 packages updated successfully" -Config $config
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Start", "Complete", "Error", "UpdatesFound", "NoUpdates")]
+        [string]$Type,
+        
+        [string]$Details = "",
+        
+        [object]$Config = $null
+    )
+    
+    # Check if notifications are enabled
+    if (-not $Config -or -not $Config.Notifications -or -not $Config.Notifications.EnableToastNotifications) {
+        return $false
+    }
+    
+    # Define notification templates
+    $templates = @{
+        "Start" = @{
+            Title = "Update Check Started"
+            Message = "Scanning for available updates..."
+            Icon = "Info"
+        }
+        "Complete" = @{
+            Title = "Updates Complete"
+            Message = if ($Details) { $Details } else { "Update process completed successfully" }
+            Icon = "Success"
+        }
+        "Error" = @{
+            Title = "Update Error"
+            Message = if ($Details) { $Details } else { "An error occurred during the update process" }
+            Icon = "Error"
+        }
+        "UpdatesFound" = @{
+            Title = "Updates Available"
+            Message = if ($Details) { $Details } else { "Updates are available for installation" }
+            Icon = "Warning"
+        }
+        "NoUpdates" = @{
+            Title = "System Up to Date"
+            Message = "All packages are up to date"
+            Icon = "Success"
+        }
+    }
+    
+    $template = $templates[$Type]
+    
+    # Send the notification
+    return Send-ToastNotification -Title $template.Title -Message $template.Message -Icon $template.Icon
+}
+
 # Export module members
 Export-ModuleMember -Function @(
     'Get-UpdateConfig',
@@ -361,5 +506,7 @@ Export-ModuleMember -Function @(
     'Test-Prerequisites',
     'Test-UpdateSource',
     'New-UpdateRestorePoint',
-    'Export-UpdateReport'
+    'Export-UpdateReport',
+    'Send-ToastNotification',
+    'Send-UpdateNotification'
 )

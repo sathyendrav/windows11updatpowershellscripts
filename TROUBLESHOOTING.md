@@ -13,6 +13,7 @@ Common issues and solutions for Windows Update Helper Scripts.
 - [Permission Problems](#permission-problems)
 - [Configuration Issues](#configuration-issues)
 - [Logging Issues](#logging-issues)
+- [Notification Issues](#notification-issues)
 
 ---
 
@@ -476,6 +477,63 @@ Get-ExecutionPolicy
 # Test config.json
 Get-Content .\config.json | ConvertFrom-Json
 ```
+
+---
+
+## Notification Issues
+
+### ❌ Toast notifications not appearing
+
+**Problem:** Script runs but no Windows toast notifications appear.
+
+**Solution:**
+
+1. **Check if notifications are enabled in config.json:**
+   ```json
+   "Notifications": {
+     "EnableToastNotifications": true
+   }
+   ```
+
+2. **Verify Windows notification settings:**
+   - Open Settings > System > Notifications
+   - Ensure "Get notifications from apps and other senders" is ON
+   - Check Focus Assist settings (may block notifications)
+
+3. **Test notifications manually:**
+   ```powershell
+   .\test-notifications.ps1
+   ```
+
+4. **Check Action Center:**
+   - Press `Win + A` to open Action Center
+   - Notifications may appear there even if toast didn't show
+
+**Common Causes:**
+- Focus Assist enabled (Do Not Disturb mode)
+- Notification permissions disabled for PowerShell
+- Windows notification service not running
+- Running in Windows Server (limited notification support)
+
+---
+
+### ❌ Toast notifications show error in log
+
+**Problem:** Log shows "Failed to send toast notification" warnings.
+
+**Solution:**
+
+1. **Windows Server:** Toast notifications may not be fully supported
+2. **Older Windows 10:** Update to latest version (1809+)
+3. **Run as regular user:** Some notification APIs work better without admin elevation
+4. **Disable if problematic:**
+   ```json
+   "Notifications": {
+     "EnableToastNotifications": false
+   }
+   ```
+
+**Note:** Scripts will continue to work normally even if notifications fail. They provide additional feedback but are not required for core functionality.
 
 ---
 

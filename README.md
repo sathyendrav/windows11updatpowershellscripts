@@ -91,7 +91,8 @@ PowerShell module providing common functions:
 - **🚫 Package Exclusions** - Exclude specific packages from updates
 - **⏱️ Quiet Hours** - Respect configured quiet hours for automated runs
 - **🔄 Retry Logic** - Automatic retry for failed updates
-- **📧 Notifications** - Email and Windows notification support (configurable)
+- **🔔 Toast Notifications** - Native Windows 10/11 notifications for update status
+- **📧 Email Notifications** - Email alerts support (configurable via SMTP settings)
 
 ---
 
@@ -241,6 +242,28 @@ The enhanced scripts use `config.json` for customization. Edit this file to cont
   "GenerateReport": true,
   "ReportFormat": "CSV",
   "ReportDirectory": "C:\\Reports\\Updates"
+}
+```
+
+**Enable toast notifications:**
+```json
+"Notifications": {
+  "EnableToastNotifications": true,
+  "EnableConsoleOutput": true
+}
+```
+
+**Configure email notifications:**
+```json
+"Notifications": {
+  "EnableEmailNotifications": true,
+  "EmailSettings": {
+    "SmtpServer": "smtp.gmail.com",
+    "SmtpPort": 587,
+    "FromAddress": "your-email@gmail.com",
+    "ToAddress": "admin@company.com",
+    "UseSSL": true
+  }
 }
 ```
 

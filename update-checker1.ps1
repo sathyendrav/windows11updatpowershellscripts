@@ -58,6 +58,9 @@ Write-Log "=" * 70 -Level "Info"
 Write-Log "Windows Update Checker - Quick Scanner" -Level "Info"
 Write-Log "=" * 70 -Level "Info"
 
+# Send start notification
+Send-UpdateNotification -Type "Start" -Config $config
+
 # ============================================================================
 # Microsoft Store Updates Check
 # ============================================================================
@@ -136,6 +139,9 @@ Write-Log "`n" + ("=" * 70) -Level "Info"
 Write-Log "Update check completed!" -Level "Success"
 Write-Log "No packages were installed - this was a preview only." -Level "Info"
 Write-Log ("=" * 70) -Level "Info"
+
+# Send completion notification
+Send-UpdateNotification -Type "UpdatesFound" -Details "Update scan completed. Check console for details." -Config $config
 
 if ($logFile) {
     Write-Log "Log file: $logFile" -Level "Info"

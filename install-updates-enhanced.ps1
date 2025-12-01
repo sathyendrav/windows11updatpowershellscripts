@@ -89,6 +89,9 @@ Write-Log "=" * 70 -Level "Info"
 Write-Log "Windows Update Helper - Enhanced Automated Installer" -Level "Info"
 Write-Log "=" * 70 -Level "Info"
 
+# Send start notification
+Send-UpdateNotification -Type "Start" -Config $config
+
 # Initialize report data
 $reportData = @{
     SystemInfo = @{
@@ -275,6 +278,18 @@ Write-Log "UPDATE SESSION COMPLETED" -Level "Success"
 Write-Log ("=" * 70) -Level "Info"
 Write-Log "Duration: $([math]::Round($reportData.Duration, 2)) minutes" -Level "Info"
 Write-Log "Store: $($reportData.Store.Status) | Winget: $($reportData.Winget.Status) | Chocolatey: $($reportData.Chocolatey.Status)" -Level "Info"
+
+# Send completion notification
+$totalUpdates = $reportData.Store.Count + $reportData.Winget.Count + $reportData.Chocolatey.Count
+$hasErrors = ($reportData.Store.Errors.Count -gt 0) -or ($reportData.Winget.Errors.Count -gt 0) -or ($reportData.Chocolatey.Errors.Count -gt 0)
+
+if ($hasErrors) {
+    Send-UpdateNotification -Type "Error" -Details "Updates completed with errors. Check log for details." -Config $config
+} elseif ($totalUpdates -gt 0) {
+    Send-UpdateNotification -Type "Complete" -Details "$totalUpdates package(s) updated successfully in $([math]::Round($reportData.Duration, 1)) minutes" -Config $config
+} else {
+    Send-UpdateNotification -Type "NoUpdates" -Config $config
+}
 
 if ($logFile) {
     Write-Log "Log file: $logFile" -Level "Info"

@@ -17,6 +17,7 @@
     "LogLevel": "Info"
   },
   "Notifications": {
+    "EnableToastNotifications": true,
     "EnableConsoleOutput": true,
     "EnableWindowsNotifications": false,
     "EnableEmailNotifications": false,

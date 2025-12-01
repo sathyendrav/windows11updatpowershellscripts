@@ -86,6 +86,9 @@ Write-Log "Windows Update Checker - Advanced Diagnostics" -Level "Info"
 Write-Log "Parameters: AutoUpdate=$AutoUpdate, ListOnly=$ListOnly" -Level "Info"
 Write-Log "=" * 70 -Level "Info"
 
+# Send start notification
+Send-UpdateNotification -Type "Start" -Config $config
+
 # ============================================================================
 # Helper Functions
 # ============================================================================
@@ -326,6 +329,13 @@ if ($ListOnly) {
     Write-ColorOutput -Message "List-only mode - no updates were installed" -Color "Cyan"
 }
 Write-ColorOutput -Message ("=" * 60) -Color "Magenta"
+
+# Send completion notification
+if ($AutoUpdate) {
+    Send-UpdateNotification -Type "Complete" -Details "Update check and installation completed." -Config $config
+} else {
+    Send-UpdateNotification -Type "UpdatesFound" -Details "Update scan completed. Check console for details." -Config $config
+}
 
 if ($logFile) {
     Write-ColorOutput -Message "Log file: $logFile" -Color "Gray"
