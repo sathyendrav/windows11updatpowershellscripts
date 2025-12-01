@@ -14,7 +14,10 @@
     "LogFileName": "update-log-{date}.txt",
     "MaxLogFileSizeKB": 5120,
     "MaxLogFiles": 10,
-    "LogLevel": "Info"
+    "LogLevel": "Info",
+    "EnableUpdateHistory": true,
+    "HistoryDatabasePath": ".\\logs\\update-history.json",
+    "HistoryRetentionDays": 90
   },
   "Notifications": {
     "EnableToastNotifications": true,

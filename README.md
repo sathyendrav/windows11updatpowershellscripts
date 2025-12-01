@@ -81,6 +81,16 @@ Powerful rollback tool for undoing updates:
 - 🖥️ **Interactive menu** for easy navigation
 - 🔒 **Safety checks** with confirmation prompts
 
+### 📊 `view-history.ps1` (New! 🎉)
+**Update History Viewer**
+
+Analyze update operations from the history database:
+- 📈 **View update history** with filtering options
+- 🔍 **Search by package** name, source, or date range
+- ❌ **Filter failed operations** for troubleshooting
+- 📄 **Export reports** to HTML or CSV formats
+- 📊 **Summary statistics** by source and operation type
+
 ---
 
 ## ✨ Features
@@ -105,6 +115,7 @@ Powerful rollback tool for undoing updates:
 - **🔔 Toast Notifications** - Native Windows 10/11 notifications for update status
 - **📧 Email Notifications** - Email alerts support (configurable via SMTP settings)
 - **⏮️ Rollback Capability** - Restore to previous restore points or rollback specific packages
+- **📊 Update History Database** - JSON-based tracking of all package operations with timestamps and status
 
 ---
 
@@ -470,6 +481,48 @@ param(
 - 📝 **Not all packages support version-specific installation**
 - 🔄 **Winget rollback**: Uninstalls current version, then installs target version
 - 🍫 **Chocolatey rollback**: Uses `--allow-downgrade` flag
+
+---
+
+### Option 5: `view-history.ps1` - View Update History (New! 🎉)
+
+**What it does:**
+- Views update history from JSON database
+- Filters by date, source, package, or success status
+- Exports reports to HTML or CSV
+- Shows summary statistics
+
+**Basic usage:**
+```powershell
+# View last 30 days
+.\view-history.ps1
+
+# View last 7 days
+.\view-history.ps1 -Days 7
+
+# Show only failed operations
+.\view-history.ps1 -FailedOnly
+
+# Search for specific package
+.\view-history.ps1 -PackageName "*chrome*"
+
+# Filter by source
+.\view-history.ps1 -Source Winget -Days 14
+
+# Export to HTML report
+.\view-history.ps1 -Export HTML -OutputPath ".\reports\history.html"
+
+# Export failed operations to CSV
+.\view-history.ps1 -FailedOnly -Export CSV -OutputPath ".\reports\failures.csv"
+```
+
+#### Key Features
+
+- **📊 Summary Statistics**: Total operations, success/failure counts, grouped by source and operation
+- **🔍 Flexible Filtering**: By date range, source, package name, or success status
+- **📈 Detailed View**: Timestamp, package, version, source, operation, and status
+- **❌ Failure Analysis**: Shows recent failures with error messages
+- **📄 Export Options**: Generate HTML or CSV reports for documentation
 
 ---
 

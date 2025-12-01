@@ -1,6 +1,8 @@
 # Logs and Reports
 logs/*.log
 logs/*.txt
+# Keep update-history.json in git (comment out to exclude it)
+# logs/update-history.json
 reports/*.html
 reports/*.csv
 reports/*.json

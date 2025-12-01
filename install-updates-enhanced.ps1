@@ -85,6 +85,16 @@ if ($config.Logging.EnableLogging) {
     $logFile = Initialize-Logging -LogDirectory $config.Logging.LogDirectory -ScriptName "install-updates"
 }
 
+# Initialize update history database
+if ($config.Logging.EnableUpdateHistory) {
+    $historyPath = if ($config.Logging.HistoryDatabasePath) { 
+        $config.Logging.HistoryDatabasePath 
+    } else { 
+        ".\logs\update-history.json" 
+    }
+    Initialize-UpdateHistory -HistoryPath $historyPath | Out-Null
+}
+
 Write-Log "=" * 70 -Level "Info"
 Write-Log "Windows Update Helper - Enhanced Automated Installer" -Level "Info"
 Write-Log "=" * 70 -Level "Info"
@@ -157,10 +167,22 @@ if ($config.UpdateSettings.EnableMicrosoftStore) {
             
             Write-Log "Microsoft Store update scan initiated successfully." -Level "Success"
             $reportData.Store.Status = "Success"
+            
+            # Record history entry
+            if ($config.Logging.EnableUpdateHistory) {
+                Add-UpdateHistoryEntry -PackageName "Microsoft Store Apps" -Version "N/A" `
+                    -Source "Store" -Operation "Scan" -Success $true -HistoryPath $historyPath
+            }
         } catch {
             Write-Log "Failed to check Microsoft Store updates: $_" -Level "Error"
             $reportData.Store.Status = "Error"
             $reportData.Store.Errors += $_.Exception.Message
+            
+            # Record failure
+            if ($config.Logging.EnableUpdateHistory) {
+                Add-UpdateHistoryEntry -PackageName "Microsoft Store Apps" -Version "N/A" `
+                    -Source "Store" -Operation "Scan" -Success $false -ErrorMessage $_.Exception.Message -HistoryPath $historyPath
+            }
         }
     } else {
         Write-Log "Microsoft Store update source is not accessible." -Level "Warning"
@@ -195,14 +217,37 @@ if ($config.UpdateSettings.EnableWinget) {
             }
             
             Write-Log "`nStarting Winget package upgrades..." -Level "Info"
-            winget upgrade --all --silent --accept-source-agreements --accept-package-agreements
+            $wingetResult = winget upgrade --all --silent --accept-source-agreements --accept-package-agreements 2>&1
+            $wingetExitCode = $LASTEXITCODE
             
-            Write-Log "Winget packages updated successfully." -Level "Success"
-            $reportData.Winget.Status = "Success"
+            if ($wingetExitCode -eq 0) {
+                Write-Log "Winget packages updated successfully." -Level "Success"
+                $reportData.Winget.Status = "Success"
+                
+                # Record history entry for successful upgrade
+                if ($config.Logging.EnableUpdateHistory) {
+                    Add-UpdateHistoryEntry -PackageName "Winget Packages (Batch)" -Version "Latest" `
+                        -Source "Winget" -Operation "Upgrade" -Success $true -HistoryPath $historyPath
+                }
+            } else {
+                Write-Log "Winget upgrade completed with warnings or errors." -Level "Warning"
+                $reportData.Winget.Status = "Partial"
+                
+                if ($config.Logging.EnableUpdateHistory) {
+                    Add-UpdateHistoryEntry -PackageName "Winget Packages (Batch)" -Version "Latest" `
+                        -Source "Winget" -Operation "Upgrade" -Success $false -ErrorMessage "Exit code: $wingetExitCode" -HistoryPath $historyPath
+                }
+            }
         } catch {
             Write-Log "Error during Winget updates: $_" -Level "Error"
             $reportData.Winget.Status = "Error"
             $reportData.Winget.Errors += $_.Exception.Message
+            
+            # Record failure
+            if ($config.Logging.EnableUpdateHistory) {
+                Add-UpdateHistoryEntry -PackageName "Winget Packages (Batch)" -Version "Latest" `
+                    -Source "Winget" -Operation "Upgrade" -Success $false -ErrorMessage $_.Exception.Message -HistoryPath $historyPath
+            }
         }
     } else {
         Write-Log "Winget is not available on this system." -Level "Warning"
@@ -232,17 +277,42 @@ if ($config.UpdateSettings.EnableChocolatey) {
                 
                 # Build exclusion parameters
                 $excludeParams = $exclusions | ForEach-Object { "--except=$_" }
-                choco upgrade all -y $excludeParams
+                $chocoResult = choco upgrade all -y $excludeParams 2>&1
             } else {
-                choco upgrade all -y
+                $chocoResult = choco upgrade all -y 2>&1
             }
             
-            Write-Log "Chocolatey packages updated successfully." -Level "Success"
-            $reportData.Chocolatey.Status = "Success"
+            $chocoExitCode = $LASTEXITCODE
+            
+            if ($chocoExitCode -eq 0) {
+                Write-Log "Chocolatey packages updated successfully." -Level "Success"
+                $reportData.Chocolatey.Status = "Success"
+                
+                # Record history entry
+                if ($config.Logging.EnableUpdateHistory) {
+                    Add-UpdateHistoryEntry -PackageName "Chocolatey Packages (Batch)" -Version "Latest" `
+                        -Source "Chocolatey" -Operation "Upgrade" -Success $true -HistoryPath $historyPath
+                }
+            } else {
+                Write-Log "Chocolatey upgrade completed with warnings or errors." -Level "Warning"
+                $reportData.Chocolatey.Status = "Partial"
+                
+                if ($config.Logging.EnableUpdateHistory) {
+                    Add-UpdateHistoryEntry -PackageName "Chocolatey Packages (Batch)" -Version "Latest" `
+                        -Source "Chocolatey" -Operation "Upgrade" -Success $false -ErrorMessage "Exit code: $chocoExitCode" -HistoryPath $historyPath
+                }
+            }
         } catch {
             Write-Log "Error during Chocolatey updates: $_" -Level "Error"
             $reportData.Chocolatey.Status = "Error"
             $reportData.Chocolatey.Errors += $_.Exception.Message
+            
+            # Record failure
+            if ($config.Logging.EnableUpdateHistory) {
+                Add-UpdateHistoryEntry -PackageName "Chocolatey Packages (Batch)" -Version "Latest" `
+                    -Source "Chocolatey" -Operation "Upgrade" -Success $false -ErrorMessage $_.Exception.Message -HistoryPath $historyPath
+            }
+        }
         }
     } else {
         Write-Log "Chocolatey is not available on this system." -Level "Warning"

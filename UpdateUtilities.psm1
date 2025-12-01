@@ -1174,5 +1174,10 @@ Export-ModuleMember -Function @(
     'Get-SystemRestorePoints',
     'Invoke-SystemRestore',
     'Get-PackageHistory',
-    'Invoke-PackageRollback'
+    'Invoke-PackageRollback',
+    'Initialize-UpdateHistory',
+    'Add-UpdateHistoryEntry',
+    'Get-UpdateHistory',
+    'Clear-UpdateHistory',
+    'Export-UpdateHistoryReport'
 )

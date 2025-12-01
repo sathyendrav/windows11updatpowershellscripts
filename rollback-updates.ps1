@@ -138,17 +138,40 @@ function Show-PackageHistory {
     Write-Host "`nPackage Update History (Last 30 days):" -ForegroundColor Cyan
     Write-Host "=" * 70 -ForegroundColor Gray
     
-    Write-Host "`nRetrieving package history..." -ForegroundColor Yellow
-    $history = Get-PackageHistory -Source All -Days 30
+    Write-Host "`nRetrieving package history from database..." -ForegroundColor Yellow
+    
+    # Try to load from history database first
+    $history = Get-UpdateHistory -Days 30
     
     if ($history -and $history.Count -gt 0) {
-        $history | Format-Table -AutoSize Source, Package, Version, Operation, Timestamp
-        Write-Host "Total operations found: $($history.Count)" -ForegroundColor Green
+        Write-Host "`nFrom Update History Database:" -ForegroundColor Green
+        $history | Format-Table -AutoSize `
+            @{Label="Time"; Expression={$_.Timestamp}; Width=20},
+            @{Label="Package"; Expression={$_.PackageName}; Width=30},
+            @{Label="Version"; Expression={$_.Version}; Width=12},
+            @{Label="Previous"; Expression={$_.PreviousVersion}; Width=12},
+            @{Label="Source"; Expression={$_.Source}; Width=10},
+            @{Label="Operation"; Expression={$_.Operation}; Width=10},
+            @{Label="Status"; Expression={if ($_.Success) {"Success"} else {"Failed"}}; Width=8}
+        
+        Write-Host "Total entries: $($history.Count)" -ForegroundColor Green
     } else {
-        Write-Host "No recent package history found." -ForegroundColor Yellow
+        Write-Host "No update history found in database." -ForegroundColor Yellow
+        Write-Host "Attempting to extract from package manager logs..." -ForegroundColor Yellow
+        
+        # Fall back to old method
+        $legacyHistory = Get-PackageHistory -Source All -Days 30
+        
+        if ($legacyHistory -and $legacyHistory.Count -gt 0) {
+            $legacyHistory | Format-Table -AutoSize Source, Package, Version, Operation, Timestamp
+            Write-Host "Total operations found: $($legacyHistory.Count)" -ForegroundColor Green
+        } else {
+            Write-Host "No recent package history found." -ForegroundColor Yellow
+        }
     }
     
     Write-Host "`nNote: For detailed history, check:" -ForegroundColor Gray
+    Write-Host "  - Update history database: .\logs\update-history.json" -ForegroundColor Gray
     Write-Host "  - Winget logs: $env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\DiagOutputDir" -ForegroundColor Gray
     Write-Host "  - Chocolatey logs: $env:ChocolateyInstall\logs\chocolatey.log" -ForegroundColor Gray
 }
@@ -193,8 +216,16 @@ function Rollback-Package {
         
         if ($success) {
             Write-Host "`nRollback completed successfully!" -ForegroundColor Green
+            
+            # Record rollback in history
+            Add-UpdateHistoryEntry -PackageName $packageName -Version $targetVersion `
+                -Source $selectedSource -Operation "Rollback" -Success $true | Out-Null
         } else {
             Write-Host "`nRollback failed. Check error messages above." -ForegroundColor Red
+            
+            # Record failed rollback
+            Add-UpdateHistoryEntry -PackageName $packageName -Version $targetVersion `
+                -Source $selectedSource -Operation "Rollback" -Success $false -ErrorMessage "Rollback operation failed" | Out-Null
         }
     } else {
         Write-Host "Rollback cancelled." -ForegroundColor Yellow
