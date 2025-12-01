@@ -26,6 +26,65 @@ Choose from simple one-click updates or advanced reporting tools with detailed d
 
 ---
 
+## 🚀 Quick Start
+
+Get started in 3 simple steps:
+
+### 1️⃣ Download & Review
+```powershell
+# Clone the repository
+git clone https://github.com/sathyendrav/windows11updatpowershellscripts.git
+cd windows11updatpowershellscripts
+
+# Review the scripts (IMPORTANT!)
+Get-Content .\install-updates-enhanced.ps1
+```
+
+### 2️⃣ Set Execution Policy
+```powershell
+# Allow script execution (run as Administrator)
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### 3️⃣ Run Your First Update
+```powershell
+# Option A: Automated update with all features (Recommended)
+.\install-updates-enhanced.ps1
+
+# Option B: Check available updates first (safe preview)
+.\update-checker1.ps1
+```
+
+**That's it!** The Dependency Installation feature will automatically install Winget and Chocolatey if they're missing.
+
+### 📋 What Happens Next?
+
+- ✅ Dependencies are checked and installed automatically
+- ✅ Pre-flight checks validate your system
+- ✅ System restore point is created (if enabled)
+- ✅ Updates run across Microsoft Store, Winget, and Chocolatey
+- ✅ Detailed logs are saved to `.\logs\`
+- ✅ HTML report is generated in `.\reports\`
+
+### ⚙️ Optional: Customize Settings
+
+Edit `config.json` to customize behavior:
+```powershell
+# Open configuration file
+notepad config.json
+```
+
+Common customizations:
+- Exclude specific packages
+- Disable update sources (Store/Winget/Chocolatey)
+- Change report format (HTML/CSV/JSON)
+- Configure quiet hours
+- Enable email notifications
+
+See [Configuration](#-configuration) section for details.
+
+---
+
 ## 📂 Scripts
 
 ### 🚀 `install-updates.ps1` (Basic)
@@ -157,6 +216,8 @@ Interactive tool for managing update priorities:
 
 > 💡 **Tip:** Run these scripts in an elevated PowerShell session (`Run as Administrator`) to avoid permission issues.
 
+> 📖 **Need help with dependencies?** See [DEPENDENCY-DOCS.md](DEPENDENCY-DOCS.md) for detailed instructions on how to install and verify Winget, Chocolatey, PowerShell modules, and troubleshoot dependency issues.
+
 > ⚠️ **IMPORTANT:** Review all scripts before running them. Understand what they do and ensure they meet your security and operational requirements.
 
 ---
@@ -230,91 +291,120 @@ These scripts are provided "AS IS" without warranty of any kind, express or impl
 
 The enhanced scripts use `config.json` for customization. Edit this file to control script behavior.
 
-### Configuration File Structure
+> 💡 **Tip:** Copy `config-example.json` to `config.json` and customize. The example file includes all available settings with documentation.
+
+```powershell
+# Create your config from the example
+Copy-Item config-example.json config.json
+notepad config.json
+```
+
+### Quick Configuration Examples
+
+**Example 1: Exclude specific packages**
+```json
+{
+  "PackageExclusions": {
+    "Winget": ["Microsoft.Edge", "VideoLAN.VLC", "Microsoft.Teams"],
+    "Chocolatey": ["googlechrome", "firefox", "adobereader"]
+  }
+}
+```
+
+**Example 2: Enable email notifications**
+```json
+{
+  "Notifications": {
+    "EnableEmailNotifications": true,
+    "EmailSettings": {
+      "SmtpServer": "smtp.gmail.com",
+      "SmtpPort": 587,
+      "FromAddress": "updates@yourdomain.com",
+      "ToAddress": "admin@yourdomain.com",
+      "Username": "your-email@gmail.com",
+      "Password": "your-app-password",
+      "UseSSL": true
+    }
+  }
+}
+```
+
+### Common Configuration Tasks
+
+<details>
+<summary><strong>Disable specific update sources</strong></summary>
 
 ```json
 {
   "UpdateSettings": {
-    "EnableMicrosoftStore": true,      // Enable/disable Store updates
-    "EnableWinget": true,              // Enable/disable Winget updates
-    "EnableChocolatey": true,          // Enable/disable Chocolatey updates
-    "CreateRestorePoint": true,        // Create restore point before updates
-    "CheckDiskSpace": true,            // Verify sufficient disk space
-    "MinimumFreeSpaceGB": 10          // Minimum free space required
-  },
-  "Logging": {
-    "EnableLogging": true,             // Enable/disable logging
-    "LogDirectory": ".\\logs",         // Where to store logs
-    "MaxLogFiles": 10,                 // Max number of log files to keep
-    "LogLevel": "Info"                 // Logging level
-  },
-  "PackageExclusions": {
-    "Winget": [],                      // Packages to exclude from Winget updates
-    "Chocolatey": []                   // Packages to exclude from Choco updates
-  },
-  "ReportSettings": {
-    "GenerateReport": true,            // Auto-generate reports
-    "ReportFormat": "HTML",            // Format: HTML, CSV, or JSON
-    "ReportDirectory": ".\\reports"    // Where to store reports
-  },
+    "EnableMicrosoftStore": true,
+    "EnableWinget": true,
+    "EnableChocolatey": false
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>Set up quiet hours</strong></summary>
+
+```json
+{
   "ScheduleSettings": {
-    "QuietHoursStart": "22:00",        // Quiet hours start time
-    "QuietHoursEnd": "07:00",          // Quiet hours end time
-    "RespectQuietHours": false,        // Honor quiet hours
-    "MaxRetryAttempts": 3              // Retry failed updates
+    "QuietHoursStart": "22:00",
+    "QuietHoursEnd": "07:00",
+    "RespectQuietHours": true
   }
 }
 ```
+</details>
 
-### Common Configuration Scenarios
+<details>
+<summary><strong>Change report format and location</strong></summary>
 
-**Exclude specific packages:**
 ```json
-"PackageExclusions": {
-  "Winget": ["Microsoft.Edge", "VideoLAN.VLC"],
-  "Chocolatey": ["googlechrome", "firefox"]
-}
-```
-
-**Disable specific update sources:**
-```json
-"UpdateSettings": {
-  "EnableMicrosoftStore": true,
-  "EnableWinget": true,
-  "EnableChocolatey": false
-}
-```
-
-**Change report format:**
-```json
-"ReportSettings": {
-  "GenerateReport": true,
-  "ReportFormat": "CSV",
-  "ReportDirectory": "C:\\Reports\\Updates"
-}
-```
-
-**Enable toast notifications:**
-```json
-"Notifications": {
-  "EnableToastNotifications": true,
-  "EnableConsoleOutput": true
-}
-```
-
-**Configure email notifications:**
-```json
-"Notifications": {
-  "EnableEmailNotifications": true,
-  "EmailSettings": {
-    "SmtpServer": "smtp.gmail.com",
-    "SmtpPort": 587,
-    "FromAddress": "your-email@gmail.com",
-    "ToAddress": "admin@company.com",
-    "UseSSL": true
+{
+  "ReportSettings": {
+    "GenerateReport": true,
+    "ReportFormat": "CSV",
+    "ReportDirectory": "C:\\Reports\\Updates"
   }
 }
 ```
+</details>
+
+<details>
+<summary><strong>Configure package priorities</strong></summary>
+
+```json
+{
+  "PackagePriority": {
+    "EnablePriorityOrdering": true,
+    "CriticalPackages": {
+      "Winget": ["Microsoft.WindowsTerminal", "Microsoft.PowerShell"],
+      "Chocolatey": ["chocolatey", "powershell-core"]
+    }
+  }
+}
+```
+</details>
+
+### Complete Configuration Reference
+
+See **[config-example.json](config-example.json)** for a complete, documented configuration file with all available settings including:
+- Update behavior and sources
+- Logging and reporting
+- Package exclusions and priorities
+- Notifications (toast and email)
+- Differential updates
+- Update validation
+- Security validation
+- Dependency installation
+- Pre-flight checks
+- Rollback settings
+- Performance tuning
+- History tracking
+- Advanced options
 
 ---
 
@@ -699,7 +789,8 @@ Automate updates with Windows Task Scheduler for hands-free maintenance.
 
 ```
 windows11updatpowershellscripts/
-├── config.json                      # Configuration file
+├── config.json                      # Configuration file (create from example)
+├── config-example.json              # Complete configuration example with docs
 ├── install-updates.ps1              # Basic update installer
 ├── install-updates-enhanced.ps1     # ⭐ Enhanced installer with logging
 ├── update-checker1.ps1              # Quick update scanner
@@ -1402,7 +1493,7 @@ Having issues? Check our comprehensive troubleshooting guide:
 
 ### [📖 TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
-Common issues covered:
+**Complete guide covering common errors and fixes:**
 - ❌ Execution policy errors
 - ❌ Permission and access denied problems
 - ❌ Microsoft Store update failures
@@ -1410,6 +1501,13 @@ Common issues covered:
 - ❌ Chocolatey installation issues
 - ❌ Configuration and logging problems
 - ❌ And much more...
+
+**For dependency-specific issues**, see [DEPENDENCY-DOCS.md](DEPENDENCY-DOCS.md):
+- Installing Winget (Microsoft Store or GitHub methods)
+- Installing Chocolatey (web install troubleshooting)
+- PowerShell module installation
+- Version checking and validation
+- Proxy and corporate network issues
 
 ### Quick Help
 

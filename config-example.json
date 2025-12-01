@@ -1,0 +1,492 @@
+{
+  "_comment": "===================================================================",
+  "_comment": "Windows Update Helper Scripts - Complete Configuration Example",
+  "_comment": "===================================================================",
+  "_comment": "Copy this file to 'config.json' and customize for your environment",
+  "_comment": "All settings are optional - defaults will be used if not specified",
+  "_comment": "===================================================================",
+
+  "UpdateSettings": {
+    "_comment": "Core update behavior settings",
+    "EnableMicrosoftStore": true,
+    "_EnableMicrosoftStore": "Enable/disable Microsoft Store app updates",
+    
+    "EnableWinget": true,
+    "_EnableWinget": "Enable/disable Windows Package Manager (Winget) updates",
+    
+    "EnableChocolatey": true,
+    "_EnableChocolatey": "Enable/disable Chocolatey package manager updates",
+    
+    "CreateRestorePoint": true,
+    "_CreateRestorePoint": "Create system restore point before updates (recommended)",
+    
+    "CheckDiskSpace": true,
+    "_CheckDiskSpace": "Verify sufficient disk space before updates",
+    
+    "MinimumFreeSpaceGB": 10,
+    "_MinimumFreeSpaceGB": "Minimum free disk space required (in GB)"
+  },
+
+  "Logging": {
+    "_comment": "Logging and transcript configuration",
+    "EnableLogging": true,
+    "_EnableLogging": "Enable/disable comprehensive logging",
+    
+    "LogDirectory": ".\\logs",
+    "_LogDirectory": "Directory to store log files (relative or absolute path)",
+    
+    "MaxLogFiles": 10,
+    "_MaxLogFiles": "Maximum number of log files to retain (oldest deleted first)",
+    
+    "LogLevel": "Info",
+    "_LogLevel": "Logging level: Debug, Info, Warning, Error",
+    
+    "EnableTranscript": true,
+    "_EnableTranscript": "Enable PowerShell transcript logging",
+    
+    "LogRetentionDays": 30,
+    "_LogRetentionDays": "Delete logs older than this many days (0 = never delete)"
+  },
+
+  "PackageExclusions": {
+    "_comment": "Packages to exclude from automatic updates",
+    "_comment": "Use exact package IDs as shown in winget/choco",
+    
+    "Winget": [],
+    "_Winget": "Example: ['Microsoft.Edge', 'VideoLAN.VLC', 'Microsoft.Teams']",
+    
+    "Chocolatey": [],
+    "_Chocolatey": "Example: ['googlechrome', 'firefox', 'adobereader']",
+    
+    "Store": [],
+    "_Store": "Example: ['Microsoft.SkypeApp', 'Microsoft.BingWeather']"
+  },
+
+  "ReportSettings": {
+    "_comment": "Report generation configuration",
+    "GenerateReport": true,
+    "_GenerateReport": "Automatically generate update reports",
+    
+    "ReportFormat": "HTML",
+    "_ReportFormat": "Report format: HTML, CSV, JSON, or Text",
+    
+    "ReportDirectory": ".\\reports",
+    "_ReportDirectory": "Directory to store generated reports",
+    
+    "IncludeSystemInfo": true,
+    "_IncludeSystemInfo": "Include system information in reports",
+    
+    "IncludeFailedPackages": true,
+    "_IncludeFailedPackages": "Include failed package details in reports",
+    
+    "OpenReportAfterGeneration": false,
+    "_OpenReportAfterGeneration": "Automatically open report in default browser/viewer"
+  },
+
+  "ScheduleSettings": {
+    "_comment": "Scheduling and timing configuration",
+    "QuietHoursStart": "22:00",
+    "_QuietHoursStart": "Quiet hours start time (24-hour format HH:MM)",
+    
+    "QuietHoursEnd": "07:00",
+    "_QuietHoursEnd": "Quiet hours end time (24-hour format HH:MM)",
+    
+    "RespectQuietHours": false,
+    "_RespectQuietHours": "Skip updates during quiet hours",
+    
+    "MaxRetryAttempts": 3,
+    "_MaxRetryAttempts": "Number of retry attempts for failed updates",
+    
+    "RetryDelaySeconds": 30,
+    "_RetryDelaySeconds": "Delay between retry attempts (in seconds)",
+    
+    "UpdateTimeout": 3600,
+    "_UpdateTimeout": "Maximum time for entire update process (in seconds)"
+  },
+
+  "Notifications": {
+    "_comment": "Notification settings",
+    "EnableToastNotifications": true,
+    "_EnableToastNotifications": "Show Windows 10/11 toast notifications",
+    
+    "EnableConsoleOutput": true,
+    "_EnableConsoleOutput": "Show colored console output during execution",
+    
+    "EnableEmailNotifications": false,
+    "_EnableEmailNotifications": "Send email notifications after updates",
+    
+    "EmailSettings": {
+      "SmtpServer": "smtp.gmail.com",
+      "_SmtpServer": "SMTP server address",
+      
+      "SmtpPort": 587,
+      "_SmtpPort": "SMTP server port (587 for TLS, 465 for SSL, 25 for unencrypted)",
+      
+      "FromAddress": "updates@yourdomain.com",
+      "_FromAddress": "Email address to send from",
+      
+      "ToAddress": "admin@yourdomain.com",
+      "_ToAddress": "Email address to send to (comma-separated for multiple)",
+      
+      "UseSSL": true,
+      "_UseSSL": "Use SSL/TLS encryption for email",
+      
+      "Username": "",
+      "_Username": "SMTP authentication username (leave empty if not required)",
+      
+      "Password": "",
+      "_Password": "SMTP authentication password (leave empty if not required)",
+      
+      "SendOnSuccess": true,
+      "_SendOnSuccess": "Send email on successful updates",
+      
+      "SendOnFailure": true,
+      "_SendOnFailure": "Send email when updates fail"
+    },
+    
+    "NotifyOnlyOnChanges": true,
+    "_NotifyOnlyOnChanges": "Only notify when updates are actually installed"
+  },
+
+  "DifferentialUpdates": {
+    "_comment": "Smart update detection - only process packages with version changes",
+    "EnableDifferentialUpdates": true,
+    "_EnableDifferentialUpdates": "Enable differential update mode",
+    
+    "CachePath": ".\\cache\\package-cache.json",
+    "_CachePath": "Path to package version cache file",
+    
+    "CacheExpiryHours": 24,
+    "_CacheExpiryHours": "Cache expiry time (hours). 0 = never expire",
+    
+    "AlwaysUpdateCache": true,
+    "_AlwaysUpdateCache": "Update cache even if no updates performed",
+    
+    "ShowChangeDetails": true,
+    "_ShowChangeDetails": "Display version change details in output",
+    
+    "TrackNewPackages": true,
+    "_TrackNewPackages": "Track and report newly installed packages"
+  },
+
+  "PackagePriority": {
+    "_comment": "Control update sequence with priority levels",
+    "EnablePriorityOrdering": true,
+    "_EnablePriorityOrdering": "Enable package priority ordering",
+    
+    "OrderingStrategy": "PriorityThenAlphabetical",
+    "_OrderingStrategy": "Sorting strategy: PriorityOnly, PriorityThenAlphabetical, PriorityThenReverseAlphabetical",
+    
+    "CriticalPackages": {
+      "_comment": "Highest priority - updates first",
+      "Winget": [
+        "Microsoft.WindowsTerminal",
+        "Microsoft.PowerShell"
+      ],
+      "Chocolatey": [
+        "chocolatey",
+        "powershell-core"
+      ],
+      "Store": []
+    },
+    
+    "HighPriorityPackages": {
+      "_comment": "High priority - development tools and frequently used apps",
+      "Winget": [
+        "Git.Git",
+        "Microsoft.VisualStudioCode"
+      ],
+      "Chocolatey": [
+        "git",
+        "nodejs"
+      ],
+      "Store": []
+    },
+    
+    "LowPriorityPackages": {
+      "_comment": "Low priority - non-essential applications",
+      "Winget": [],
+      "Chocolatey": [],
+      "Store": []
+    },
+    
+    "DeferredPackages": {
+      "_comment": "Lowest priority - updates last, can be skipped if time-limited",
+      "Winget": [],
+      "Chocolatey": [],
+      "Store": []
+    }
+  },
+
+  "UpdateValidation": {
+    "_comment": "Verify updates succeeded with version checks and health validation",
+    "EnableValidation": true,
+    "_EnableValidation": "Enable post-update validation",
+    
+    "ValidationTimeout": 30,
+    "_ValidationTimeout": "Maximum time for validation (seconds per package)",
+    
+    "VerifyVersionChange": true,
+    "_VerifyVersionChange": "Confirm version changed after update",
+    
+    "CheckPackageHealth": true,
+    "_CheckPackageHealth": "Run health check commands after update",
+    
+    "RetryFailedValidation": true,
+    "_RetryFailedValidation": "Retry validation if initial check fails",
+    
+    "MaxValidationRetries": 2,
+    "_MaxValidationRetries": "Maximum validation retry attempts",
+    
+    "ValidationMethods": {
+      "_comment": "Validation method per source",
+      "Winget": "Version",
+      "_Winget": "Version = parse version from winget, Basic = existence check only",
+      "Chocolatey": "Version",
+      "Store": "Basic"
+    },
+    
+    "FailureActions": {
+      "_comment": "Actions to take on validation failure",
+      "LogFailure": true,
+      "_LogFailure": "Log validation failures",
+      
+      "NotifyOnFailure": true,
+      "_NotifyOnFailure": "Send notification on validation failure",
+      
+      "AttemptRollback": false,
+      "_AttemptRollback": "Attempt automatic rollback on failure (use with caution)",
+      
+      "ContinueOnFailure": true,
+      "_ContinueOnFailure": "Continue with remaining packages if validation fails"
+    },
+    
+    "HealthCheckCommands": {
+      "_comment": "Custom commands to verify package functionality",
+      "_comment": "Leave empty string to skip health check for that package",
+      "Git.Git": "git --version",
+      "Microsoft.PowerShell": "pwsh --version",
+      "Microsoft.WindowsTerminal": "",
+      "Python.Python.3": "python --version",
+      "Node.js": "node --version",
+      "7zip.7zip": "7z"
+    }
+  },
+
+  "SecurityValidation": {
+    "_comment": "Hash verification and digital signature validation",
+    "EnableHashVerification": true,
+    "_EnableHashVerification": "Calculate and verify package hashes",
+    
+    "EnableSignatureValidation": true,
+    "_EnableSignatureValidation": "Validate digital signatures (Authenticode)",
+    
+    "HashAlgorithm": "SHA256",
+    "_HashAlgorithm": "Hash algorithm: SHA256, SHA512, SHA1, MD5",
+    
+    "RequireValidSignature": false,
+    "_RequireValidSignature": "Fail if signature is missing or invalid",
+    
+    "TrustedPublishers": [
+      "Microsoft Corporation",
+      "Microsoft Windows",
+      "Chocolatey Software, Inc.",
+      "Google LLC",
+      "Mozilla Corporation"
+    ],
+    "_TrustedPublishers": "List of trusted publisher names for signature validation",
+    
+    "BlockUntrustedPackages": false,
+    "_BlockUntrustedPackages": "Prevent installation from untrusted publishers",
+    
+    "VerifyBeforeUpdate": true,
+    "_VerifyBeforeUpdate": "Verify integrity before installing updates",
+    
+    "VerifyAfterUpdate": true,
+    "_VerifyAfterUpdate": "Verify integrity after update completes",
+    
+    "HashValidationTimeout": 60,
+    "_HashValidationTimeout": "Maximum time for hash calculation (seconds)",
+    
+    "SaveHashDatabase": true,
+    "_SaveHashDatabase": "Maintain hash database for version tracking",
+    
+    "HashDatabasePath": ".\\cache\\package-hashes.json",
+    "_HashDatabasePath": "Path to hash database file",
+    
+    "SignatureValidationMethods": {
+      "_comment": "Signature validation method per source",
+      "Winget": "Authenticode",
+      "Chocolatey": "Authenticode",
+      "Store": "AppX"
+    },
+    
+    "AllowSelfSignedCertificates": false,
+    "_AllowSelfSignedCertificates": "Accept self-signed certificates (not recommended)",
+    
+    "CheckCertificateRevocation": true,
+    "_CheckCertificateRevocation": "Verify certificates haven't been revoked (requires internet)",
+    
+    "TrustedCertificateThumbprints": [],
+    "_TrustedCertificateThumbprints": "List of trusted certificate thumbprints (SHA1 hashes)"
+  },
+
+  "DependencyInstallation": {
+    "_comment": "Automatic detection and installation of required dependencies",
+    "EnableDependencyCheck": true,
+    "_EnableDependencyCheck": "Enable automatic dependency checking at startup",
+    
+    "AutoInstallMissingDependencies": true,
+    "_AutoInstallMissingDependencies": "Automatically install missing dependencies",
+    
+    "RequiredDependencies": {
+      "_comment": "Specify which dependencies are required",
+      "Winget": true,
+      "_Winget": "Windows Package Manager (App Installer)",
+      
+      "Chocolatey": false,
+      "_Chocolatey": "Chocolatey package manager",
+      
+      "PowerShellModules": [],
+      "_PowerShellModules": "Example: ['Pester', 'PSScriptAnalyzer']"
+    },
+    
+    "MinimumVersions": {
+      "_comment": "Minimum version requirements for dependencies",
+      "Winget": "1.6.0",
+      "_Winget": "Minimum Winget version",
+      
+      "Chocolatey": "2.0.0",
+      "_Chocolatey": "Minimum Chocolatey version",
+      
+      "PowerShell": "5.1",
+      "_PowerShell": "Minimum PowerShell version"
+    },
+    
+    "InstallationMethods": {
+      "_comment": "Preferred installation method for each dependency",
+      "Winget": "MicrosoftStore",
+      "_Winget": "MicrosoftStore = App Installer from Store, GitHub = Download msixbundle",
+      
+      "Chocolatey": "WebInstall",
+      "_Chocolatey": "WebInstall = Download and run install.ps1 from chocolatey.org",
+      
+      "PowerShellModules": "PSGallery",
+      "_PowerShellModules": "PSGallery = Install from PowerShell Gallery"
+    },
+    
+    "SkipDependencyCheck": false,
+    "_SkipDependencyCheck": "Skip dependency checking entirely (not recommended)",
+    
+    "FailOnMissingDependencies": false,
+    "_FailOnMissingDependencies": "Exit if dependencies are missing and auto-install disabled",
+    
+    "InstallationTimeout": 300,
+    "_InstallationTimeout": "Maximum time for each dependency installation (seconds)",
+    
+    "ValidateAfterInstallation": true,
+    "_ValidateAfterInstallation": "Verify dependency installed successfully",
+    
+    "LogDependencyStatus": true,
+    "_LogDependencyStatus": "Log detailed dependency status information"
+  },
+
+  "PreFlightChecks": {
+    "_comment": "System validation before running updates",
+    "EnablePreFlightChecks": true,
+    "_EnablePreFlightChecks": "Enable pre-flight system checks",
+    
+    "CheckInternetConnectivity": true,
+    "_CheckInternetConnectivity": "Verify internet connection",
+    
+    "CheckAdminRights": true,
+    "_CheckAdminRights": "Verify running with administrator privileges",
+    
+    "CheckWindowsVersion": true,
+    "_CheckWindowsVersion": "Verify Windows version compatibility",
+    
+    "MinimumWindowsVersion": "10.0.18362",
+    "_MinimumWindowsVersion": "Minimum Windows build (10.0.18362 = Windows 10 1903)",
+    
+    "CheckPowerShellVersion": true,
+    "_CheckPowerShellVersion": "Verify PowerShell version",
+    
+    "FailOnPreFlightError": false,
+    "_FailOnPreFlightError": "Exit if any pre-flight check fails"
+  },
+
+  "RollbackSettings": {
+    "_comment": "Rollback and recovery configuration",
+    "EnableAutoRollback": false,
+    "_EnableAutoRollback": "Automatically rollback on critical failures",
+    
+    "RollbackOnValidationFailure": false,
+    "_RollbackOnValidationFailure": "Rollback if post-update validation fails",
+    
+    "RollbackTimeout": 600,
+    "_RollbackTimeout": "Maximum time for rollback operation (seconds)",
+    
+    "PreserveRestorePoints": 5,
+    "_PreserveRestorePoints": "Number of restore points to preserve",
+    
+    "CreateRestorePointBefore": true,
+    "_CreateRestorePointBefore": "Create restore point before updates"
+  },
+
+  "PerformanceSettings": {
+    "_comment": "Performance and resource management",
+    "MaxConcurrentUpdates": 3,
+    "_MaxConcurrentUpdates": "Maximum parallel update operations (0 = unlimited)",
+    
+    "ThrottleNetworkUsage": false,
+    "_ThrottleNetworkUsage": "Limit network bandwidth usage",
+    
+    "MaxBandwidthMbps": 0,
+    "_MaxBandwidthMbps": "Maximum bandwidth in Mbps (0 = unlimited)",
+    
+    "LowPowerMode": false,
+    "_LowPowerMode": "Reduce resource usage on battery power",
+    
+    "PauseOnBatteryPower": false,
+    "_PauseOnBatteryPower": "Skip updates when on battery power"
+  },
+
+  "HistoryDatabase": {
+    "_comment": "Update history tracking",
+    "EnableHistoryTracking": true,
+    "_EnableHistoryTracking": "Track all update operations in JSON database",
+    
+    "HistoryDatabasePath": ".\\logs\\update-history.json",
+    "_HistoryDatabasePath": "Path to history database file",
+    
+    "MaxHistoryEntries": 1000,
+    "_MaxHistoryEntries": "Maximum history entries (oldest deleted first)",
+    
+    "TrackSuccessfulUpdates": true,
+    "_TrackSuccessfulUpdates": "Record successful update operations",
+    
+    "TrackFailedUpdates": true,
+    "_TrackFailedUpdates": "Record failed update operations"
+  },
+
+  "AdvancedSettings": {
+    "_comment": "Advanced configuration options",
+    "EnableDebugMode": false,
+    "_EnableDebugMode": "Enable verbose debug output",
+    
+    "EnableDryRun": false,
+    "_EnableDryRun": "Simulate updates without actually installing",
+    
+    "ForceReinstall": false,
+    "_ForceReinstall": "Force reinstall even if package is current",
+    
+    "SkipVerification": false,
+    "_SkipVerification": "Skip package verification (not recommended)",
+    
+    "CustomScriptPath": "",
+    "_CustomScriptPath": "Path to custom pre/post update script",
+    
+    "EnvironmentVariables": {},
+    "_EnvironmentVariables": "Custom environment variables for update process"
+  }
+}
