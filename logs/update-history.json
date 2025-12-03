@@ -1,12 +1,50 @@
-﻿{
-    "Timestamp":  "2025-12-01 18:36:50",
-    "PackageName":  "TestPackage",
-    "Version":  "1.0.0",
-    "PreviousVersion":  "Unknown",
-    "Source":  "Winget",
-    "Operation":  "Install",
-    "Success":  true,
-    "ErrorMessage":  "",
-    "ComputerName":  "SATYALEGION",
-    "UserName":  "sathy"
-}
+﻿[
+    {
+        "Timestamp":  "2025-12-01 18:36:50",
+        "PackageName":  "TestPackage",
+        "Version":  "1.0.0",
+        "PreviousVersion":  "Unknown",
+        "Source":  "Winget",
+        "Operation":  "Install",
+        "Success":  true,
+        "ErrorMessage":  "",
+        "ComputerName":  "SATYALEGION",
+        "UserName":  "sathy"
+    },
+    {
+        "Timestamp":  "2025-12-03 22:48:08",
+        "PackageName":  "Microsoft Store Apps",
+        "Version":  "N/A",
+        "PreviousVersion":  "Unknown",
+        "Source":  "Store",
+        "Operation":  "Scan",
+        "Success":  true,
+        "ErrorMessage":  "",
+        "ComputerName":  "SATYALEGION",
+        "UserName":  "sathy"
+    },
+    {
+        "Timestamp":  "2025-12-03 22:49:04",
+        "PackageName":  "Microsoft Store Apps",
+        "Version":  "N/A",
+        "PreviousVersion":  "Unknown",
+        "Source":  "Store",
+        "Operation":  "Scan",
+        "Success":  true,
+        "ErrorMessage":  "",
+        "ComputerName":  "SATYALEGION",
+        "UserName":  "sathy"
+    },
+    {
+        "Timestamp":  "2025-12-03 22:50:57",
+        "PackageName":  "Microsoft Store Apps",
+        "Version":  "N/A",
+        "PreviousVersion":  "Unknown",
+        "Source":  "Store",
+        "Operation":  "Scan",
+        "Success":  true,
+        "ErrorMessage":  "",
+        "ComputerName":  "SATYALEGION",
+        "UserName":  "sathy"
+    }
+]

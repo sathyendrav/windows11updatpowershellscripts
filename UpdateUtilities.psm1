@@ -2600,7 +2600,7 @@ function Invoke-DependencyInstallation {
     #>
     param(
         [Parameter(Mandatory = $false)]
-        [hashtable]$Config
+        [object]$Config
     )
     
     try {

@@ -414,7 +414,6 @@ if ($config.UpdateSettings.EnableChocolatey) {
                     -Source "Chocolatey" -Operation "Upgrade" -Success $false -ErrorMessage $_.Exception.Message -HistoryPath $historyPath
             }
         }
-        }
     } else {
         Write-Log "Chocolatey is not available on this system." -Level "Warning"
         Write-Log "Visit https://chocolatey.org/install for installation instructions." -Level "Info"
